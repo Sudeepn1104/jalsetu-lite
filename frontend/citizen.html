@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JalSetu Lite — request water</title>
+<script src="./auth.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f2f7f6; --card:#ffffff; --ink:#0d2b3b; --muted:#587a80; --line:#c9dbd6;
+  --teal:#1f7a5c; --teal-dark:#155940; --gold:#e0a825; --gold-ink:#3a2a00;
+  --red:#c1401f; --red-bg:#fbe6df; --green:#1f7a5c; --green-bg:#e2f2ea;
+  --display:"Fraunces","Noto Sans Kannada",Georgia,serif;
+  --body:"Public Sans","Noto Sans Kannada","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#08161c; --card:#0f2530; --ink:#e7f2ef; --muted:#8fb0ac; --line:#20443f;
+    --teal:#4fb98b; --teal-dark:#3a9670; --red:#ff8a68; --red-bg:#3a1e15; --green:#4fb98b; --green-bg:#123526;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#08161c; --card:#0f2530; --ink:#e7f2ef; --muted:#8fb0ac; --line:#20443f;
+  --teal:#4fb98b; --teal-dark:#3a9670; --red:#ff8a68; --red-bg:#3a1e15; --green:#4fb98b; --green-bg:#123526;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:460px;margin:0 auto;padding:16px 16px 44px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px}
+h1{font-family:var(--display);font-weight:700;font-size:23px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+.header-tools{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card);flex-shrink:0}
+.lang button{border:0;background:transparent;color:var(--muted);padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--teal);color:#fff}
+.theme-toggle{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font:inherit;font-size:19px;line-height:1;cursor:pointer}
+.steps{display:flex;gap:4px;list-style:none;margin:0 0 14px;padding:0}
+.steps li{flex:1;text-align:center;font-size:11px;color:var(--muted);border-top:3px solid var(--line);padding-top:5px}
+.steps li.done{border-color:var(--teal);color:var(--ink)}
+.steps li.now{border-color:var(--gold);color:var(--ink);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+h2{font-family:var(--display);font-weight:700;font-size:19px;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:13.5px;color:var(--muted);margin:14px 0 7px;font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 13px;font:inherit;cursor:pointer;min-height:44px}
+.chip[aria-pressed="true"]{border-color:var(--teal);background:color-mix(in srgb, var(--teal) 12%, var(--card));font-weight:600}
+#map{height:190px;border-radius:12px;border:1px solid var(--line);margin-top:6px}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.location-section{border-top:1px solid var(--line);margin-top:17px;padding-top:12px}
+.location-section>h3:first-child{margin-top:0}
+.location-section>.hint{margin:0 0 8px}
+#locationStatus{min-height:18px;margin:8px 0 0}
+#selectedLocation{margin-top:5px;padding:7px 9px;border-left:3px solid var(--teal);background:color-mix(in srgb, var(--teal) 9%, var(--card));color:var(--ink);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.location-section+#findBtn{margin-top:12px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.location-search{display:flex;gap:8px;margin-top:6px}
+.location-search input{min-width:0;flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card);color:var(--ink);font:inherit}
+.location-search button{flex:0 0 auto;border:0;border-radius:10px;padding:10px 14px;background:var(--teal);color:#fff;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+.location-search button:disabled{opacity:.6;cursor:wait}
+.location-tools{margin-top:7px}
+.location-tools button{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--card);color:var(--teal);font:inherit;font-size:13px;cursor:pointer;min-height:40px}
+.location-tools button:disabled{opacity:.6;cursor:wait}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:600;font-size:16px;cursor:pointer;background:var(--teal);color:#fff;min-height:48px}
+.btn:disabled{background:color-mix(in srgb, var(--teal) 16%, var(--card));color:var(--muted);opacity:1;cursor:not-allowed}
+.btn.gold{background:var(--gold);color:var(--gold-ink)}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.offer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px;background:var(--card);color:var(--ink);text-align:left;font:inherit;width:100%;cursor:pointer;min-width:0}
+.offer[aria-pressed="true"]{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal) inset}
+.offer .nm,.offer .meta{min-width:0;overflow-wrap:anywhere}
+.offer .nm{font-weight:600}
+.offer .pr{font-family:var(--display);font-weight:700;font-size:19px;text-align:right}
+.meta{font-size:12.5px;color:var(--muted)}
+.tag{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 7px;margin-left:6px}
+.tag.pub{background:var(--gold);color:var(--gold-ink)}
+.tag.bad{background:var(--red-bg);color:var(--red)}
+.tag.ok{background:var(--green-bg);color:var(--green)}
+.otp{font-family:var(--display);font-size:38px;font-weight:700;letter-spacing:.25em;text-align:center;margin:6px 0}
+.bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;background:var(--teal);width:0}
+.msg{border-radius:10px;padding:10px 13px;font-size:14px;margin-top:10px}
+.msg.err{background:var(--red-bg);color:var(--red)}
+.msg.good{background:var(--green-bg);color:var(--green)}
+.qr{display:block;margin:8px auto;border:8px solid #fff;border-radius:6px;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+.foot{font-size:11.5px;color:var(--muted);margin-top:6px;text-align:center}
+@media (max-width:360px){.wrap{padding-left:11px;padding-right:11px}.card{padding:13px}.offer{padding:10px;gap:2px 7px}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body data-role="citizen">
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="ttl">JalSetu Lite</h1>
+    </div>
+    <div class="header-tools">
+      <div class="lang" role="group" aria-label="Language">
+        <button data-lang="en" aria-pressed="true">EN</button>
+        <button data-lang="kn" aria-pressed="false">ಕನ್ನಡ</button>
+      </div>
+      <button class="theme-toggle" id="themeToggle" type="button" data-act="theme" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode"><span aria-hidden="true">☾</span></button>
+    </div>
+  </header>
+  <p class="sub" id="sub"></p>
+  <ol class="steps" id="steps"></ol>
+  <div id="view"></div>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+// ---- Config: change this if the backend runs elsewhere ----
+var API_BASE = window.JALSETHU_API_BASE || "http://localhost:8000";
+var CAPS = [4000, 5000, 6000, 12000];
+var lastGeocodeAt = 0;
+
+function initialTheme(){
+  try{
+    var saved = localStorage.getItem("jalsetu-theme");
+    if(saved === "light" || saved === "dark") return saved;
+  }catch(e){}
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+var I18N = {
+ en:{sub:"Compare public and private water tankers near you",
+  steps:["Request","Offers","Pay","Track","Deliver"],
+  reqH:"Request a tanker", size:"Tanker size", wtype:"Water type", fresh:"Fresh water", treated:"Treated water", switchToLight:"Switch to light mode", switchToDark:"Switch to dark mode",
+  locationHeading:"Delivery location", loc:"Or tap the map to set your pin", locationSearchHint:"Enter an address, area, or landmark to find it on the map.", selectedLocation:"Selected location: ", currentLocationName:"Current location", pinnedLocation:"Map pin", locatingAddress:"Finding the address for this pin…", pinAddressFound:"Pin address updated.", pinAddressUnavailable:"No address found; the pin is saved at the shown coordinates.", locationLabel:"Search location", locationPlaceholder:"Address, area, or landmark", searchLocation:"Find", useCurrent:"Use current location", locatingCurrent:"Getting your location…", locationAccessErr:"Could not access your location. Allow location access and try again.", locating:"Searching for location…", locationFound:"Location found. Adjust the pin if needed.", pinSelected:"Location selected. Tap another spot to move the pin.", noLocation:"No matching location found. Try a nearby area or landmark.", locationErr:"Could not search now. Check your connection and try again.", find:"See offers", noPin:"Choose a location to see offers",
+  offH:"Offers near you", pub:"Public option", above:"Above public rate by Rs ", pickOne:"Pick an offer to continue",
+  confirm:"Confirm this tanker", payNote:"Pay the operator directly by UPI before the tanker is dispatched. JalSetu Lite never holds your money.",
+  min:"min", km:"km", per:"per 1,000 L", searching:"Finding offers…", searchErr:"Could not reach the server. Is the backend running on port 8000?",
+  trkH:"Tanker on the way", eta:"Arriving in", arrivedH:"Tanker has arrived",
+  delH:"Share this OTP with the driver", delSub:"Only share it when the tanker is at your door.",
+  waitDeliver:"Waiting for the driver to confirm delivery…",
+  payH:"Pay the operator", payAmt:"Amount", qrNote:"Demo QR only. Configure the operator’s verified UPI ID before accepting payments.", donePay:"I have paid",
+  doneH:"Delivered and paid", order:"Order", litres:"Litres recorded", status:"Status",
+  dispH:"Order disputed", dispTxt:"This has been recorded on the operator's scorecard. Contact support if this needs review.",
+  again:"New request", foot:"Prototype by Team Diamonds — Build for Billions, NITK Surathkal."},
+ kn:{sub:"ನಿಮ್ಮ ಹತ್ತಿರದ ಸರ್ಕಾರಿ ಮತ್ತು ಖಾಸಗಿ ಟ್ಯಾಂಕರ್ ಹೋಲಿಕೆ",
+  steps:["ವಿನಂತಿ","ಆಫರ್","ಪಾವತಿ","ಟ್ರ್ಯಾಕ್","ವಿತರಣೆ"],
+  reqH:"ಟ್ಯಾಂಕರ್ ಕೇಳಿ", size:"ಟ್ಯಾಂಕರ್ ಗಾತ್ರ", wtype:"ನೀರಿನ ಪ್ರಕಾರ", fresh:"ಶುದ್ಧ ನೀರು", treated:"ಸಂಸ್ಕರಿತ ನೀರು", switchToLight:"ಬೆಳಕು ಮೋಡ್‌ಗೆ ಬದಲಿಸಿ", switchToDark:"ಕತ್ತಲೆ ಮೋಡ್‌ಗೆ ಬದಲಿಸಿ",
+  locationHeading:"ವಿತರಣಾ ಸ್ಥಳ", loc:"ಅಥವಾ ಪಿನ್ ಹಾಕಲು ನಕ್ಷೆಯನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ", locationSearchHint:"ನಕ್ಷೆಯಲ್ಲಿ ಹುಡುಕಲು ವಿಳಾಸ, ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತನ್ನು ನಮೂದಿಸಿ.", selectedLocation:"ಆಯ್ಕೆ ಮಾಡಿದ ಸ್ಥಳ: ", currentLocationName:"ಪ್ರಸ್ತುತ ಸ್ಥಳ", pinnedLocation:"ನಕ್ಷೆಯಲ್ಲಿ ಗುರುತಿಸಿದ ಸ್ಥಳ", locatingAddress:"ಈ ಪಿನ್‌ನ ವಿಳಾಸ ಹುಡುಕಲಾಗುತ್ತಿದೆ…", pinAddressFound:"ಪಿನ್‌ನ ವಿಳಾಸ ನವೀಕರಿಸಲಾಗಿದೆ.", pinAddressUnavailable:"ವಿಳಾಸ ಸಿಗಲಿಲ್ಲ. ಪಿನ್ ನಿರ್ದೇಶಾಂಕಗಳೊಂದಿಗೆ ಉಳಿಸಲಾಗಿದೆ.", locationLabel:"ಸ್ಥಳ ಹುಡುಕಿ", locationPlaceholder:"ವಿಳಾಸ, ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತು", searchLocation:"ಹುಡುಕಿ", useCurrent:"ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ", locatingCurrent:"ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗುತ್ತಿದೆ…", locationAccessErr:"ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗಲಿಲ್ಲ. ಸ್ಥಳ ಅನುಮತಿ ನೀಡಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", locating:"ಸ್ಥಳ ಹುಡುಕಲಾಗುತ್ತಿದೆ…", locationFound:"ಸ್ಥಳ ಕಂಡುಬಂದಿದೆ. ಬೇಕಾದರೆ ಪಿನ್ ಸರಿಪಡಿಸಿ.", pinSelected:"ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ. ಪಿನ್ ಸರಿಸಲು ನಕ್ಷೆಯ ಬೇರೆ ಸ್ಥಳ ಟ್ಯಾಪ್ ಮಾಡಿ.", noLocation:"ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ಹತ್ತಿರದ ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತು ಹುಡುಕಿ.", locationErr:"ಈಗ ಸ್ಥಳ ಹುಡುಕಲಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", find:"ಆಫರ್‌ಗಳನ್ನು ನೋಡಿ", noPin:"ಆಫರ್‌ಗಳನ್ನು ನೋಡಲು ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ",
+  offH:"ಹತ್ತಿರದ ಆಫರ್‌ಗಳು", pub:"ಸರ್ಕಾರಿ ಆಯ್ಕೆ", above:"ಸರ್ಕಾರಿ ದರಕ್ಕಿಂತ ಹೆಚ್ಚು: ₹", pickOne:"ಮುಂದುವರಿಯಲು ಒಂದು ಆಫರ್ ಆಯ್ಕೆಮಾಡಿ",
+  confirm:"ಈ ಟ್ಯಾಂಕರ್ ದೃಢೀಕರಿಸಿ", payNote:"ಟ್ಯಾಂಕರ್ ಹೊರಡುವ ಮೊದಲು ಆಪರೇಟರ್‌ಗೆ UPI ಮೂಲಕ ನೇರವಾಗಿ ಪಾವತಿಸಿ.",
+  min:"ನಿಮಿಷ", km:"ಕಿ.ಮೀ", per:"1,000 ಲೀ.ಗೆ", searching:"ಆಫರ್‌ಗಳನ್ನು ಹುಡುಕುತ್ತಿದೆ…", searchErr:"ಸರ್ವರ್ ತಲುಪಲಾಗಲಿಲ್ಲ. ಬ್ಯಾಕೆಂಡ್ ಪೋರ್ಟ್ 8000ರಲ್ಲಿ ಚಾಲನೆಯಲ್ಲಿದೆಯೇ?",
+  trkH:"ಟ್ಯಾಂಕರ್ ಬರುತ್ತಿದೆ", eta:"ತಲುಪಲು", arrivedH:"ಟ್ಯಾಂಕರ್ ತಲುಪಿದೆ",
+  delH:"ಈ OTP ಚಾಲಕರಿಗೆ ಹೇಳಿ", delSub:"ಟ್ಯಾಂಕರ್ ಬಾಗಿಲಲ್ಲಿ ಬಂದಾಗ ಮಾತ್ರ ಹೇಳಿ.",
+  waitDeliver:"ಚಾಲಕರು ವಿತರಣೆ ದೃಢೀಕರಿಸುವುದನ್ನು ಕಾಯಲಾಗುತ್ತಿದೆ…",
+  payH:"ಆಪರೇಟರ್‌ಗೆ ಪಾವತಿಸಿ", payAmt:"ಮೊತ್ತ", qrNote:"ಡೆಮೋ QR ಮಾತ್ರ. ಪಾವತಿ ಸ್ವೀಕರಿಸುವ ಮೊದಲು ಆಪರೇಟರ್‌ನ ಪರಿಶೀಲಿಸಿದ UPI ID ಹೊಂದಿಸಿ.", donePay:"ಪಾವತಿಸಿದ್ದೇನೆ",
+  doneH:"ವಿತರಣೆ ಮತ್ತು ಪಾವತಿ ಪೂರ್ಣ", order:"ಆರ್ಡರ್", litres:"ದಾಖಲಾದ ಲೀಟರ್", status:"ಸ್ಥಿತಿ",
+  dispH:"ಆರ್ಡರ್ ವಿವಾದಿತ", dispTxt:"ಇದನ್ನು ಆಪರೇಟರ್ ಸ್ಕೋರ್‌ಕಾರ್ಡ್‌ನಲ್ಲಿ ದಾಖಲಿಸಲಾಗಿದೆ.",
+  again:"ಹೊಸ ವಿನಂತಿ", foot:"ಟೀಮ್ ಡೈಮಂಡ್ಸ್ ಅವರ ಮಾದರಿ — Build for Billions, NITK ಸುರತ್ಕಲ್."}
+};
+
+var S = { lang:"en", step:0, cap:6000, water:"fresh", pin:null, offers:[], sel:null, orderId:null,
+          otp:null, status:null, poll:null, err:"", theme:initialTheme(), locationMessage:null, locationName:"", locationNameKey:"", locationRevision:0, locationNeedsReverse:false };
+var map, marker;
+document.documentElement.setAttribute("data-theme",S.theme);
+
+function t(k){ return I18N[S.lang][k] || I18N.en[k]; }
+function num(n){ return Number(n).toLocaleString("en-IN"); }
+function setLocationMessage(key){
+  S.locationMessage = key;
+  var status = document.getElementById("locationStatus");
+  if(status) status.textContent = key ? t(key) : "";
+}
+function setSelectedLocation(name,key){
+  S.locationName = name || "";
+  S.locationNameKey = key || "";
+  var selected = document.getElementById("selectedLocation");
+  if(!selected) return;
+  selected.hidden = !S.locationName && !S.locationNameKey;
+  selected.textContent = selected.hidden ? "" : t("selectedLocation")+(S.locationNameKey?t(S.locationNameKey):S.locationName);
+}
+
+function stepsHTML(){
+  var names = I18N[S.lang].steps, cur = Math.min(S.step, names.length), h = "";
+  names.forEach(function(n,i){ h += '<li class="'+(i<cur?"done":(i===cur?"now":""))+'">'+n+'</li>'; });
+  return h;
+}
+
+async function api(path, opts){
+  var res = await fetch(API_BASE + path, Object.assign({headers:{"Content-Type":"application/json"}}, opts||{}));
+  var body = await res.json().catch(function(){ return {}; });
+  if(!res.ok){ var e = new Error(body.message || body.error || "Request failed"); e.body = body; e.status = res.status; throw e; }
+  return body;
+}
+
+var paymentQrObjectUrl = null;
+
+function render(){
+  document.documentElement.lang = S.lang === "kn" ? "kn" : "en";
+  document.getElementById("sub").textContent = t("sub");
+  document.getElementById("foot").textContent = t("foot");
+  document.getElementById("steps").innerHTML = stepsHTML();
+  Array.prototype.forEach.call(document.querySelectorAll("[data-lang]"), function(b){
+    b.setAttribute("aria-pressed", b.getAttribute("data-lang")===S.lang);
+  });
+  var themeButton = document.getElementById("themeToggle");
+  var switchThemeKey = S.theme === "dark" ? "switchToLight" : "switchToDark";
+  themeButton.setAttribute("aria-pressed", S.theme === "dark");
+  themeButton.setAttribute("aria-label", t(switchThemeKey));
+  themeButton.title = t(switchThemeKey);
+  themeButton.innerHTML = '<span aria-hidden="true">'+(S.theme === "dark" ? "☀" : "☾")+'</span>';
+  var v = document.getElementById("view"), h = "";
+
+  if(S.step === 0){
+    h += '<div class="card"><h2>'+t("reqH")+'</h2>';
+    h += '<h3>'+t("size")+'</h3><div class="row">';
+    CAPS.forEach(function(c){ h += '<button class="chip" data-act="cap" data-v="'+c+'" aria-pressed="'+(S.cap===c)+'">'+num(c)+' L</button>'; });
+    h += '</div><h3>'+t("wtype")+'</h3><div class="row">';
+    ["fresh","treated"].forEach(function(w){ h += '<button class="chip" data-act="water" data-v="'+w+'" aria-pressed="'+(S.water===w)+'">'+t(w)+'</button>'; });
+    h += '</div><section class="location-section"><h3>'+t("locationHeading")+'</h3><p class="hint">'+t("locationSearchHint")+'</p><form class="location-search" id="locationForm">';
+    h += '<label class="sr-only" for="locationSearch">'+t("locationLabel")+'</label><input id="locationSearch" type="search" placeholder="'+t("locationPlaceholder")+'" autocomplete="street-address" required>';
+    h += '<button type="submit">'+t("searchLocation")+'</button></form><div class="location-tools"><button type="button" data-act="locate">'+t("useCurrent")+'</button></div>';
+    h += '<p class="hint" id="locationStatus" role="status" aria-live="polite"></p><p class="location-selected" id="selectedLocation" hidden></p><h3>'+t("loc")+'</h3><div id="map"></div>';
+    if(S.err) h += '<div class="msg err">'+S.err+'</div>';
+    h += '</section><button class="btn" id="findBtn" data-act="find" '+(S.pin?'':'disabled')+'>'+(S.pin?t("find"):t("noPin"))+'</button></div>';
+  }
+  else if(S.step === 1){
+    h += '<div class="card"><h2>'+t("offH")+'</h2>';
+    if(S.err) h += '<div class="msg err">'+S.err+'</div>';
+    S.offers.forEach(function(o){
+      h += '<button class="offer" data-act="pick" data-v="'+o.operator_id+'" aria-pressed="'+(S.sel===o.operator_id)+'">';
+      h += '<span class="nm">'+o.name+(o.type==="public"?'<span class="tag pub">'+t("pub")+'</span>':'')+'</span><span class="pr">Rs '+num(o.price)+'</span>';
+      h += '<span class="meta">'+o.eta_min+' '+t("min")+', '+o.distance_km+' '+t("km")+', '+o.rating.toFixed(1)+' / 5'+(o.flagged?'<span class="tag bad">'+t("above")+num(o.price - (S.offers.filter(function(x){return x.type==="public";})[0]||{price:0}).price)+'</span>':'')+'</span>';
+      h += '<span class="meta" style="text-align:right">Rs '+num(o.price_per_1000l)+' '+t("per")+'</span></button>';
+    });
+    h += '<p class="meta">'+t("payNote")+'</p>';
+    h += '<button class="btn" data-act="confirm" '+(S.sel?'':'disabled')+'>'+(S.sel?t("confirm"):t("pickOne"))+'</button></div>';
+  }
+  else if(S.step === 2){
+    var o = S.offers.filter(function(x){ return x.operator_id === S.sel; })[0] || {price:0, name:""};
+    h += '<div class="card"><h2>'+t("payH")+'</h2><p>'+t("payAmt")+': <strong>Rs '+num(o.price)+'</strong> ('+o.name+')</p>';
+    h += '<img class="qr" id="paymentQr" width="240" height="240" alt="Demo UPI payment QR"><p class="meta" id="qrStatus" role="status" style="text-align:center">Generating payment QR…</p>';
+    h += '<button class="btn gold" data-act="paid">'+t("donePay")+'</button></div>';
+  }
+  else if(S.step === 3){
+    var st = S.status || "CONFIRMED";
+    h += '<div class="card"><h2>'+(st==="ARRIVED"?t("arrivedH"):t("trkH"))+'</h2>';
+    h += '<div class="bar"><i style="width:'+(st==="ARRIVED"?100:st==="DISPATCHED"?55:15)+'%"></i></div>';
+    h += '<p class="meta">'+t("order")+': '+S.orderId+' &middot; '+t("status")+': '+st+'</p>';
+    if(S.err) h += '<div class="msg err">'+S.err+'</div>';
+    h += '</div>';
+  }
+  else if(S.step === 4){
+    if(S.status === "DISPUTED"){
+      h += '<div class="card"><h2>'+t("dispH")+'</h2><p class="meta">'+t("dispTxt")+'</p><button class="btn" data-act="reset">'+t("again")+'</button></div>';
+    } else {
+      h += '<div class="card"><h2>'+t("delH")+'</h2><p class="meta">'+t("delSub")+'</p><div class="otp">'+(S.otp||"----")+'</div>';
+      h += '<p class="meta" style="text-align:center">'+t("waitDeliver")+'</p></div>';
+    }
+  }
+  else if(S.step === 5){
+    var o2 = S.offers.filter(function(x){ return x.operator_id === S.sel; })[0] || {price:0, name:""};
+    h += '<div class="card"><h2>'+t("doneH")+'</h2><table>';
+    h += '<tr><th>'+t("order")+'</th><td>'+S.orderId+'</td></tr>';
+    h += '<tr><th>'+o2.name+'</th><td>Rs '+num(o2.price)+'</td></tr>';
+    h += '<tr><th>'+t("status")+'</th><td><span class="tag ok">DELIVERED</span> <span class="tag ok">PAID</span></td></tr></table>';
+    h += '<div style="height:12px"></div><button class="btn" data-act="reset">'+t("again")+'</button></div>';
+  }
+  v.innerHTML = h;
+  if(S.step === 2){
+    var qrImage = document.getElementById("paymentQr");
+    var qrStatus = document.getElementById("qrStatus");
+    if(qrImage && S.orderId){
+      qrImage.onload = function(){ if(qrStatus) qrStatus.textContent = t("qrNote"); };
+      qrImage.onerror = function(){ if(qrStatus) qrStatus.textContent = "Could not load the payment QR. Try again or contact the operator."; };
+      if(paymentQrObjectUrl) URL.revokeObjectURL(paymentQrObjectUrl);
+      paymentQrObjectUrl = null;
+      window.fetch(API_BASE + "/upi-qr?order_id=" + encodeURIComponent(S.orderId), {headers:{"Accept":"image/svg+xml"}})
+        .then(function(response){ if(!response.ok) throw new Error("QR request failed"); return response.blob(); })
+        .then(function(blob){
+          if(S.step !== 2 || !qrImage.isConnected) return;
+          paymentQrObjectUrl = URL.createObjectURL(blob);
+          qrImage.src = paymentQrObjectUrl;
+        })
+        .catch(function(){ if(qrStatus) qrStatus.textContent = "Could not load the payment QR. Try again or contact the operator."; });
+    }
+  }
+  var locationStatus = document.getElementById("locationStatus");
+  if(locationStatus && S.locationMessage) locationStatus.textContent = t(S.locationMessage);
+  setSelectedLocation(S.locationName,S.locationNameKey);
+  if(S.step === 0) setTimeout(initMap, 0);
+}
+
+function initMap(){
+  var el = document.getElementById("map");
+  if(!el) return;
+  if(map){ map.remove(); map = null; }
+  marker = null;
+  map = L.map(el).setView(S.pin || [12.92, 74.85], 13);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  if(S.pin) createMarker(S.pin);
+  map.on("click", function(e){
+    setPin(e.latlng.lat, e.latlng.lng, null, "", "pinnedLocation", true);
+    setLocationMessage("locatingAddress");
+    reverseGeocodePin(e.latlng.lat,e.latlng.lng,S.locationRevision,S.lang);
+  });
+}
+
+function createMarker(pin){
+  marker = L.marker(pin,{draggable:true}).addTo(map);
+  marker.on("dragend", function(){
+    var position = marker.getLatLng();
+    setPin(position.lat,position.lng,null,"","pinnedLocation",true);
+    setLocationMessage("locatingAddress");
+    reverseGeocodePin(position.lat,position.lng,S.locationRevision,S.lang);
+  });
+}
+
+function setPin(lat,lng,zoom,name,nameKey,needsReverse){
+  S.locationRevision++;
+  S.locationNeedsReverse = !!needsReverse;
+  S.pin = [lat,lng];
+  if(nameKey) setSelectedLocation("",nameKey);
+  else if(name) setSelectedLocation(name,"");
+  else setSelectedLocation("","pinnedLocation");
+  if(zoom) map.setView(S.pin, zoom);
+  if(marker && marker._map === map) marker.setLatLng(S.pin); else createMarker(S.pin);
+  var findBtn = document.getElementById("findBtn");
+  if(findBtn){ findBtn.disabled = false; findBtn.textContent = t("find"); }
+}
+
+async function reverseGeocodePin(lat,lng,revision,language){
+  try{
+    if(revision !== S.locationRevision || language !== S.lang) return;
+    var delay = 1000 - (Date.now() - lastGeocodeAt);
+    if(delay > 0) await new Promise(function(resolve){ setTimeout(resolve, delay); });
+    if(revision !== S.locationRevision || language !== S.lang) return;
+    lastGeocodeAt = Date.now();
+    var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lng);
+    var response = await fetch(url, {headers:{"Accept":"application/json", "Accept-Language":language==="kn"?"kn":"en"}});
+    if(!response.ok) throw new Error("Reverse geocoding request failed");
+    var result = await response.json();
+    if(revision !== S.locationRevision || language !== S.lang) return;
+    if(result && result.display_name){
+      setSelectedLocation(result.display_name,"");
+      setLocationMessage("pinAddressFound");
+    } else {
+      setSelectedLocation(lat.toFixed(5)+", "+lng.toFixed(5),"");
+      setLocationMessage("pinAddressUnavailable");
+    }
+  }catch(err){
+    if(revision !== S.locationRevision || language !== S.lang) return;
+    setSelectedLocation(lat.toFixed(5)+", "+lng.toFixed(5),"");
+    setLocationMessage("pinAddressUnavailable");
+  }
+}
+
+function stopPoll(){ if(S.poll){ clearInterval(S.poll); S.poll = null; } }
+
+function startPoll(){
+  stopPoll();
+  S.poll = setInterval(async function(){
+    try{
+      var st = await api("/status/" + S.orderId);
+      S.status = st.status;
+      if(S.status === "ARRIVED" && S.step === 3){
+        S.step = 4; render();
+      } else if((S.status === "DISPATCHED" || S.status === "CONFIRMED") && S.step === 3){
+        render();
+      }
+      if(S.status === "DISPUTED"){ stopPoll(); S.step = 4; render(); }
+      if(S.status === "DELIVERED"){ stopPoll(); S.step = 5; render(); }
+    }catch(e){ /* transient network hiccup — keep polling */ }
+  }, 2000);
+}
+
+function reset(){
+  stopPoll();
+  S.step=0; S.cap=6000; S.water="fresh"; S.pin=null; S.offers=[]; S.sel=null; S.orderId=null; S.otp=null; S.status=null; S.err=""; S.locationMessage=null; S.locationName=""; S.locationNameKey=""; S.locationNeedsReverse=false; S.locationRevision++;
+  render();
+}
+
+document.addEventListener("click", async function(e){
+  var lb = e.target.closest("[data-lang]");
+  if(lb){
+    S.lang = lb.getAttribute("data-lang"); render();
+    if(S.pin && S.locationNeedsReverse){
+      setLocationMessage("locatingAddress");
+      reverseGeocodePin(S.pin[0],S.pin[1],S.locationRevision,S.lang);
+    }
+    return;
+  }
+  var b = e.target.closest("[data-act]"); if(!b) return;
+  var a = b.getAttribute("data-act"), v = b.getAttribute("data-v");
+
+  if(a === "theme"){
+    S.theme = S.theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme",S.theme);
+    try{ localStorage.setItem("jalsetu-theme",S.theme); }catch(err){}
+    render();
+  }
+  else if(a === "cap"){ S.cap = Number(v); render(); }
+  else if(a === "water"){ S.water = v; render(); }
+  else if(a === "locate"){
+    if(!navigator.geolocation){ setLocationMessage("locationAccessErr"); return; }
+    b.disabled = true;
+    setLocationMessage("locatingCurrent");
+    navigator.geolocation.getCurrentPosition(function(position){
+      setPin(position.coords.latitude, position.coords.longitude, 16, "", "currentLocationName", true);
+      setLocationMessage("locatingAddress");
+      reverseGeocodePin(position.coords.latitude,position.coords.longitude,S.locationRevision,S.lang);
+      b.disabled = false;
+    }, function(){
+      setLocationMessage("locationAccessErr");
+      b.disabled = false;
+    }, {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
+  }
+  else if(a === "find"){
+    if(!S.pin) return;
+    S.err = ""; render();
+    try{
+      var res = await api("/search", { method:"POST", body: JSON.stringify({
+        capacity_l: S.cap, water_type: S.water, lat: S.pin[0], lng: S.pin[1]
+      })});
+      S.offers = res.offers; S.sel = null; S.step = 1; render();
+    }catch(err){ S.err = t("searchErr"); render(); }
+  }
+  else if(a === "pick"){ S.sel = v; render(); }
+  else if(a === "confirm"){
+    if(!S.sel) return;
+    try{
+      var sel = await api("/select", { method:"POST", body: JSON.stringify({
+        capacity_l: S.cap, water_type: S.water, operator_id: S.sel, lat: S.pin[0], lng: S.pin[1]
+      })});
+      S.orderId = sel.order_id;
+      var conf = await api("/confirm", { method:"POST", body: JSON.stringify({ order_id: S.orderId })});
+      S.otp = conf.otp; S.status = "CONFIRMED"; S.step = 2; S.err = ""; render();
+    }catch(err){ S.err = err.message; render(); }
+  }
+  else if(a === "paid"){ S.step = 3; render(); startPoll(); }
+  else if(a === "reset"){ reset(); }
+});
+
+document.addEventListener("submit", async function(e){
+  if(e.target.id !== "locationForm") return;
+  e.preventDefault();
+  var input = document.getElementById("locationSearch"), button = e.target.querySelector("button[type=submit]");
+  var query = input.value.trim();
+  if(!query) return;
+  button.disabled = true;
+  setLocationMessage("locating");
+  try{
+    var delay = 1000 - (Date.now() - lastGeocodeAt);
+    if(delay > 0) await new Promise(function(resolve){ setTimeout(resolve, delay); });
+    lastGeocodeAt = Date.now();
+    var url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(query);
+    var response = await fetch(url, {headers:{"Accept":"application/json", "Accept-Language":S.lang==="kn"?"kn,en":"en,kn"}});
+    if(!response.ok) throw new Error("Geocoding request failed");
+    var results = await response.json();
+    var result = results && results[0];
+    if(!result){
+      var fallbackUrl = "https://photon.komoot.io/api/?q="+encodeURIComponent(query)+"&limit=1&lat=12.92&lon=74.85";
+      var fallbackResponse = await fetch(fallbackUrl, {headers:{"Accept":"application/json"}});
+      if(!fallbackResponse.ok) throw new Error("Fallback geocoding request failed");
+      var fallbackResults = await fallbackResponse.json();
+      var feature = fallbackResults.features && fallbackResults.features[0];
+      if(feature){
+        var coordinates = feature.geometry.coordinates;
+        var properties = feature.properties || {};
+        result = {lat:coordinates[1], lon:coordinates[0], display_name:[properties.name,properties.city,properties.state,properties.country].filter(Boolean).join(", ")};
+      }
+    }
+    if(!result){ setLocationMessage("noLocation"); return; }
+    setPin(Number(result.lat), Number(result.lon), 16, result.display_name || result.name || "", "", true);
+    setLocationMessage("locatingAddress");
+    reverseGeocodePin(Number(result.lat),Number(result.lon),S.locationRevision,S.lang);
+  }catch(err){
+    setLocationMessage("locationErr");
+  }finally{
+    button.disabled = false;
+  }
+});
+
+render();
+})();
+</script>
+</body>
+</html>
