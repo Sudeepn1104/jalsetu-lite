@@ -10,6 +10,7 @@ import os
 import secrets
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -127,18 +128,42 @@ def get_connection():
 def init_db():
     with get_connection() as connection:
         connection.execute(
-            """CREATE TABLE IF NOT EXISTS orders (
+            """
+            CREATE TABLE IF NOT EXISTS orders (
                 order_number INTEGER PRIMARY KEY AUTOINCREMENT,
                 order_id TEXT UNIQUE,
                 status TEXT NOT NULL,
                 operator_id TEXT NOT NULL,
                 capacity_l INTEGER NOT NULL,
+                water_type TEXT NOT NULL,
                 price INTEGER NOT NULL,
                 otp_hash TEXT,
                 otp_attempts INTEGER NOT NULL DEFAULT 0,
-                backup_phone TEXT
-            )"""
+                backup_phone TEXT,
+                meter_before INTEGER,
+                meter_after INTEGER,
+                litres_delivered INTEGER,
+                lat REAL NOT NULL,
+                lng REAL NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS order_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT NOT NULL,
+                from_status TEXT,
+                to_status TEXT NOT NULL,
+                at TEXT NOT NULL
+            )
+            """
+        )
+    
+    # Insert helper to set timestamps
+    def now_iso():
+        return datetime.now(timezone.utc).isoformat()
 
 
 init_db()
@@ -343,8 +368,16 @@ def select(request: SelectRequest):
     offer = make_offer(operator, request)
     with get_connection() as connection:
         cursor = connection.execute(
-            "INSERT INTO orders (status, operator_id, capacity_l, price) VALUES ('OFFERED', ?, ?, ?)",
-            (operator["id"], request.capacity_l, offer.price),
+            "INSERT INTO orders (status, operator_id, capacity_l, price, water_type, lat, lng, created_at) VALUES ('OFFERED', ?, ?, ?, ?, ?, ?, ?)",
+            (
+                operator["id"],
+                request.capacity_l,
+                offer.price,
+                request.water_type,
+                request.lat,
+                request.lng,
+                datetime.now(timezone.utc).isoformat(),
+            ),
         )
         order_id = f"JS-{cursor.lastrowid + 1041}"
         connection.execute(
