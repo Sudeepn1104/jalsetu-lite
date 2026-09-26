@@ -141,4 +141,4 @@ Response:
 - All timestamps are ISO 8601 UTC strings, added server-side.
 - CORS: `JALSETHU_CORS_ORIGINS` accepts a comma-separated allowlist; `*` remains the development default. Set the deployed frontend origin for production.
 - Existing order request and response field names remain unchanged. Auth uses headers and separate endpoints.
-- Real payments are not enabled by the demo UPI ID. Configure each operator’s verified UPI ID before accepting payments.
+- `GET /upi-qr` returns an authenticated demo QR for any confirmed citizen order and operator. It encodes the invalid demo payee `demo@invalid`, the order amount, and order reference. It is only a UI prototype and cannot route payments; production payment handling is not implemented.

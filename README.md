@@ -166,25 +166,9 @@ export JALSETU_OTP_SECRET="replace-with-a-long-random-secret"
 uvicorn main:app --reload --port 8000
 ```
 
-### Configure operator UPI payment IDs
+### Demo UPI QR
 
-Set each operator's verified VPA in the backend environment using its operator ID. For example:
-
-**Windows PowerShell**
-
-```powershell
-$env:JALSETHU_UPI_ID_A = "verified-vpa@bank"
-uvicorn main:app --reload --port 8000
-```
-
-**macOS/Linux**
-
-```bash
-export JALSETHU_UPI_ID_A="verified-vpa@bank"
-uvicorn main:app --reload --port 8000
-```
-
-Use `JALSETHU_UPI_ID_P`, `JALSETHU_UPI_ID_B`, and so on for the other operator IDs. Obtain and verify these IDs with each real operator; do not use sample IDs. If an ID is missing or invalid, the API withholds that operator's payment QR. The payer must confirm the payee and amount in their UPI app; this prototype cannot confirm settlement automatically.
+The citizen checkout displays a demo QR for every confirmed order and every operator. It encodes the intentionally invalid payee ID `demo@invalid`, includes that order's sample amount and reference, and is labeled as a demo. It cannot route a real payment. The QR demonstrates the interface only; real payment routing is not implemented.
 
 ---
 

@@ -1111,17 +1111,9 @@ def get_upi_qr(order_id: str, authorization: str | None = Header(default=None)):
         raise api_error(403, "ORDER_FORBIDDEN", "This order is not assigned to your account")
     if order["status"] != "CONFIRMED":
         raise api_error(409, "INVALID_STATE", "Payment QR is available only for confirmed orders")
-    operator = OPERATORS[order["operator_id"]]
-    vpa = (operator.get("upi_id") or os.environ.get(f"JALSETHU_UPI_ID_{order['operator_id']}", "")).strip()
-    if not re.fullmatch(r"[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}", vpa):
-        raise api_error(
-            409,
-            "PAYMENT_NOT_CONFIGURED",
-            "This operator has not configured a verified UPI ID. Contact the operator to arrange payment.",
-        )
     payment_uri = build_upi_payment_uri(
-        vpa=vpa,
-        payee_name=operator["name"],
+        vpa="demo@invalid",
+        payee_name=f"JalSetu Demo - {OPERATORS[order['operator_id']]['name']}",
         amount=order["price"],
         order_id=order_id,
     )
@@ -1129,7 +1121,7 @@ def get_upi_qr(order_id: str, authorization: str | None = Header(default=None)):
 
 
 def build_upi_payment_uri(*, vpa: str, payee_name: str, amount: int, order_id: str) -> str:
-    """Create the fixed-amount UPI deep link encoded into the citizen QR."""
+    """Create a fixed-amount UPI deep link for a demo-only citizen QR."""
     return "upi://pay?" + urlencode({
         "pa": vpa,
         "pn": payee_name,

@@ -514,20 +514,20 @@ class APIWorkflowTests(unittest.TestCase):
         self.assertEqual(delivered["litres_delivered"], 3800)
         self.assertNotEqual(original_otp, refreshed["otp"])
 
-    def test_payment_qr_requires_configured_operator_vpa_and_encodes_fixed_order_amount(self) -> None:
+    def test_payment_qr_is_demo_only_and_encodes_fixed_order_amount(self) -> None:
         citizen_token = self.register_citizen("upi-qr")
         order_id, _ = self.create_order(citizen_token)
 
         status, body = self.request(
             "GET", f"/upi-qr?order_id={order_id}", token=citizen_token
         )
-        self.assertEqual(status, 409, body)
-        self.assertEqual(body["error"], "PAYMENT_NOT_CONFIGURED")
+        self.assertEqual(status, 200, body)
+        self.assertIn(b"<svg", body)
 
         from fastapi.responses import Response
         from main import get_upi_qr
 
-        with patch.dict(os.environ, {"JALSETHU_UPI_ID_A": "ganesh.water@bank"}), patch("main.authenticated_user", return_value={"id": 1, "role": "citizen"}), patch(
+        with patch("main.authenticated_user", return_value={"id": 1, "role": "citizen"}), patch(
             "main.fetch_order",
             return_value={
                 "order_id": order_id,
@@ -541,8 +541,8 @@ class APIWorkflowTests(unittest.TestCase):
         uri = response.body.decode("utf-8")
         self.assertTrue(uri.startswith("upi://pay?"))
         parameters = parse_qs(uri.split("?", 1)[1])
-        self.assertEqual(parameters["pa"], ["ganesh.water@bank"])
-        self.assertEqual(parameters["pn"], ["Ganesh Water Suppliers"])
+        self.assertEqual(parameters["pa"], ["demo@invalid"])
+        self.assertEqual(parameters["pn"], ["JalSetu Demo - Ganesh Water Suppliers"])
         self.assertEqual(parameters["tr"], [order_id])
         self.assertEqual(parameters["am"], ["500.00"])
         self.assertEqual(parameters["cu"], ["INR"])
