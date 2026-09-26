@@ -31,15 +31,20 @@ def reserve_port() -> int:
 class APIWorkflowTests(unittest.TestCase):
     def test_production_configuration_rejects_weak_secrets_and_unsafe_cors(self) -> None:
         base = os.environ.copy()
+        production_database = Path(tempfile.gettempdir()) / f"jalsethu-production-config-{os.getpid()}.sqlite3"
+        for artifact in (
+            production_database,
+            Path(f"{production_database}-wal"),
+            Path(f"{production_database}-shm"),
+        ):
+            self.addCleanup(artifact.unlink, missing_ok=True)
         base.update(
             {
                 "JALSETHU_ENV": "production",
                 "JALSETU_OTP_SECRET": "o" * 40,
                 "JALSETHU_ADMIN_TOKEN": "a" * 40,
                 "JALSETHU_CORS_ORIGINS": "https://app.example.test",
-                "JALSETHU_DB_PATH": str(
-                    Path(tempfile.gettempdir()) / f"jalsethu-production-config-{os.getpid()}.sqlite3"
-                ),
+                "JALSETHU_DB_PATH": str(production_database),
             }
         )
         invalid_settings = (

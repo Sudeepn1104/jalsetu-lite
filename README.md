@@ -209,6 +209,28 @@ docker compose up --build -d
 
 The named `jalsethu-data` volume stores `/data/jalsetu.db` across container restarts. Back it up regularly. Configure the actual deployed origin in `JALSETHU_CORS_ORIGINS`; keep HTTPS enabled at the deployment edge. Set verified `JALSETHU_UPI_ID_<operator-id>` values for each payee in the deployment environment. A QR is a payment request only: integrate a payment provider and verify its signed settlement callbacks before representing a payment as confirmed.
 
+### Database backup and recovery
+
+The backup utility uses SQLite's online backup API, checks the resulting file with `PRAGMA integrity_check`, and writes the verified snapshot atomically. For Docker, run:
+
+```bash
+docker compose exec jalsethu python backup_db.py --destination /data/backups
+docker compose cp jalsethu:/data/backups ./backups
+```
+
+Copy backups off the deployment host as well; a backup in the same Docker volume does not protect against volume or host loss. For a local backend, run `python backup_db.py --destination ../backups` from `backend`.
+
+To restore in Docker, first copy the selected verified backup into `/data/backups`, then stop the service and restore through a one-off container:
+
+```bash
+docker compose cp ./backups/jalsetu-YYYYMMDDTHHMMSSffffffZ.sqlite3 jalsethu:/data/backups/
+docker compose stop jalsethu
+docker compose run --rm --no-deps jalsethu python restore_db.py --source /data/backups/jalsetu-YYYYMMDDTHHMMSSffffffZ.sqlite3 --replace
+docker compose up -d jalsethu
+```
+
+The restore command validates the source before changing anything and preserves a verified pre-restore copy beside the database. If the current database is corrupt, it preserves the raw database and WAL files instead. Stop the local backend before running `python restore_db.py --source ../backups/<backup-file>.sqlite3 --replace` from `backend`. Keep backups according to your operational retention policy and periodically rehearse restoration.
+
 ---
 
 ## 📁 Repository structure
@@ -216,8 +238,10 @@ The named `jalsethu-data` volume stores `/data/jalsetu.db` across container rest
 ```
 jalsetu-lite/
 ├── backend/
-│   ├── main.py              # FastAPI endpoints & Beckn state machine
-│   ├── tests/               # Isolated API workflow regression checks
+│   ├── main.py              # FastAPI endpoints & order state machine
+│   ├── backup_db.py         # Consistent, integrity-checked SQLite backups
+│   ├── restore_db.py        # Verified restore with pre-restore recovery copy
+│   ├── tests/               # Isolated API and database regression checks
 │   ├── seed/
 │   │   └── operators.json   # Seed operator data (BWSSB & local private)
 │   └── requirements.txt     # Python dependencies
