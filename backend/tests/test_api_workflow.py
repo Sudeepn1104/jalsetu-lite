@@ -441,6 +441,79 @@ class APIWorkflowTests(unittest.TestCase):
         self.assertEqual(status, 403, body)
         self.assertEqual(body["error"], "ROLE_FORBIDDEN")
 
+    def test_active_orders_are_limited_to_the_signed_in_citizen(self) -> None:
+        owner_token = self.register_citizen("active-owner")
+        other_token = self.register_citizen("active-other")
+        active_id, _ = self.create_order(owner_token)
+        closed_id, _ = self.create_order(owner_token)
+        status, cancelled = self.request("POST", f"/orders/{closed_id}/cancel", token=owner_token)
+        self.assertEqual(status, 200, cancelled)
+
+        status, body = self.request("GET", "/auth/active-orders", token=owner_token)
+        self.assertEqual(status, 200, body)
+        self.assertEqual([order["order_id"] for order in body["orders"]], [active_id])
+        self.assertEqual(body["orders"][0]["status"], "CONFIRMED")
+
+        status, body = self.request("GET", "/auth/active-orders", token=other_token)
+        self.assertEqual(status, 200, body)
+        self.assertEqual(body["orders"], [])
+        status, body = self.request("GET", "/auth/active-orders", token=self.driver_token)
+        self.assertEqual(status, 403, body)
+        self.assertEqual(body["error"], "ROLE_FORBIDDEN")
+
+    def test_delivery_code_recovery_rotates_code_without_resetting_attempts(self) -> None:
+        citizen_token = self.register_citizen("code-recovery")
+        other_token = self.register_citizen("code-recovery-other")
+        order_id, original_otp = self.create_order(citizen_token)
+
+        status, body = self.request(
+            "POST", f"/orders/{order_id}/delivery-code", token=citizen_token
+        )
+        self.assertEqual(status, 409, body)
+        self.assertEqual(body["error"], "INVALID_STATE")
+
+        self.dispatch_and_arrive(order_id)
+        status, body = self.request(
+            "POST", f"/orders/{order_id}/delivery-code", token=other_token
+        )
+        self.assertEqual(status, 403, body)
+        status, regenerated = self.request(
+            "POST", f"/orders/{order_id}/delivery-code", token=citizen_token
+        )
+        self.assertEqual(status, 200, regenerated)
+        self.assertEqual(regenerated["status"], "ARRIVED")
+        self.assertRegex(regenerated["otp"], r"^\d{4}$")
+
+        wrong_otp = "0000" if regenerated["otp"] != "0000" else "0001"
+        status, body = self.request(
+            "POST", f"/driver/deliver/{order_id}",
+            {"otp": wrong_otp, "meter_before": 0, "meter_after": 4000},
+            token=self.driver_token,
+        )
+        self.assertEqual(status, 422, body)
+        refreshed_status, refreshed = self.request(
+            "POST", f"/orders/{order_id}/delivery-code", token=citizen_token
+        )
+        self.assertEqual(refreshed_status, 200, refreshed)
+        self.assertNotEqual(refreshed["otp"], regenerated["otp"])
+        connection = sqlite3.connect(self.database_path)
+        try:
+            attempts = connection.execute(
+                "SELECT otp_attempts FROM orders WHERE order_id = ?", (order_id,)
+            ).fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(attempts, 1)
+
+        status, delivered = self.request(
+            "POST", f"/driver/deliver/{order_id}",
+            {"otp": refreshed["otp"], "meter_before": 100, "meter_after": 3900},
+            token=self.driver_token,
+        )
+        self.assertEqual(status, 200, delivered)
+        self.assertEqual(delivered["litres_delivered"], 3800)
+        self.assertNotEqual(original_otp, refreshed["otp"])
+
     def test_payment_qr_requires_configured_operator_vpa_and_encodes_fixed_order_amount(self) -> None:
         citizen_token = self.register_citizen("upi-qr")
         order_id, _ = self.create_order(citizen_token)

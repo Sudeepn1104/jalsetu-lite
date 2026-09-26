@@ -767,6 +767,23 @@ def get_account_history(authorization: str | None = Header(default=None)):
     return {"orders": orders}
 
 
+@app.get("/auth/active-orders")
+def get_active_citizen_orders(authorization: str | None = Header(default=None)):
+    user = authenticated_user(authorization)
+    require_role(user, "citizen")
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT order_id, status, operator_id, capacity_l, water_type, price, created_at
+            FROM orders
+            WHERE citizen_user_id = ? AND status IN ('OFFERED', 'CONFIRMED', 'DISPATCHED', 'ARRIVED')
+            ORDER BY created_at DESC, order_number DESC
+            """,
+            (user["id"],),
+        ).fetchall()
+    return {"orders": [dict(row) for row in rows]}
+
+
 def require_capacity(capacity_l: int) -> None:
     if capacity_l not in TARIFF_PUBLIC:
         raise api_error(422, "UNSUPPORTED_CAPACITY", "Capacity must be 4000, 5000, 6000, or 12000 litres")
@@ -1058,6 +1075,30 @@ def cancel_order(order_id: str, authorization: str | None = Header(default=None)
     ):
         raise api_error(409, "INVALID_STATE", "This order changed; refresh before cancelling")
     return {"order_id": order_id, "status": "CANCELLED"}
+
+
+@app.post("/orders/{order_id}/delivery-code")
+def regenerate_delivery_code(order_id: str, authorization: str | None = Header(default=None)):
+    user = authenticated_user(authorization)
+    require_role(user, "citizen")
+    with get_connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        order = connection.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+        if order is None:
+            raise api_error(404, "ORDER_NOT_FOUND", "Order was not found")
+        order = dict(order)
+        if not can_view_order(user, order):
+            raise api_error(403, "ORDER_FORBIDDEN", "This order is not assigned to your account")
+        if order["status"] == "DISPUTED" or order["otp_attempts"] >= 3:
+            raise HTTPException(409, {"error": "OTP_LOCKED", "status": "DISPUTED"})
+        if order["status"] != "ARRIVED":
+            raise api_error(409, "INVALID_STATE", "A delivery code can only be recovered after the tanker arrives")
+        otp = f"{secrets.randbelow(10000):04d}"
+        connection.execute(
+            "UPDATE orders SET otp_hash = ? WHERE order_id = ? AND status = 'ARRIVED' AND otp_attempts < 3",
+            (otp_digest(order_id, otp), order_id),
+        )
+    return {"order_id": order_id, "status": "ARRIVED", "otp": otp}
 
 
 @app.get("/upi-qr")

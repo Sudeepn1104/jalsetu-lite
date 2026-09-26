@@ -185,7 +185,7 @@ Use `JALSETHU_UPI_ID_P`, `JALSETHU_UPI_ID_B`, and so on for the other operator I
 - Citizens create an account from the citizen dashboard. Operator and driver accounts must be provisioned by an administrator; users cannot grant themselves staff roles.
 - Open **Administrator: manage operator and driver accounts** from a dashboard login screen, then enter `JALSETHU_ADMIN_TOKEN` to list staff, create accounts, or set a new staff password. The API alternatives are `GET /auth/admin/users`, `POST /auth/admin/users`, and `PUT /auth/admin/users/{user_id}/password`, all requiring `X-Admin-Token`.
 - Staff passwords are hashed and cannot be retrieved. The administrator chooses a password at creation/reset time and must securely share it with that staff member. Password changes revoke existing sessions.
-- All dashboards have sign-in, sign-out, and account history controls. Passwords are salted PBKDF2 hashes; bearer sessions expire after 12 hours by default and are revocable.
+- All dashboards have sign-in, sign-out, and account history controls. Citizen active orders are restored after reload/sign-in; an arrived order can issue a replacement delivery code if the original browser session was lost. Passwords are salted PBKDF2 hashes; bearer sessions expire after 12 hours by default and are revocable.
 - Order requests keep their existing contract fields. Authenticated orders and their status transitions are saved to SQLite for later history. Legacy anonymous orders remain available to their operator but cannot be retroactively attached to a citizen account.
 
 ## Deploy with Docker

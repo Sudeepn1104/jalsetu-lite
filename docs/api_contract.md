@@ -127,10 +127,12 @@ Response:
 - `POST /auth/login` accepts `{ "email": "…", "password": "…", "role": "citizen|operator|driver" }` and returns `access_token`, `token_type`, `expires_at`, and a safe `user` object.
 - `GET /auth/me` returns the signed-in user. `POST /auth/logout` revokes the current token.
 - `GET /auth/history` returns that account’s stored orders and status events (maximum 100, newest first).
+- `GET /auth/active-orders` returns the signed-in citizen’s active `OFFERED`, `CONFIRMED`, `DISPATCHED`, and `ARRIVED` orders so a browser session can recover after reload.
 - Operator and driver accounts cannot self-register. An administrator provisions them through `POST /auth/admin/users` with the `X-Admin-Token` header and an `operator_id` from the seed data.
 - The protected administrator panel is available from the login screen. `GET /auth/admin/users` lists safe staff account details; `PUT /auth/admin/users/{user_id}/password` sets a new password and revokes that account’s existing sessions. Passwords are never returned by the API.
 - `GET /operators` provides the configured operator IDs and display names for account assignment.
 - Send protected requests with `Authorization: Bearer <access_token>`. Only citizens can create and confirm orders. Status, dispatch, arrival, delivery, and citizen order QR requests enforce account role and order/operator ownership. The operator dashboard checks citizen-created orders and dispatches them; it does not create or confirm orders. `/search` and `/operators/scores` remain public.
+- `POST /orders/{order_id}/delivery-code` lets only the owning citizen regenerate the driver code while the order is `ARRIVED`. The new four-digit code replaces the previous code; failed-attempt counts are retained and the existing three-attempt dispute lock still applies.
 - Passwords are salted PBKDF2 hashes; only a hash of each random session token is stored. Sessions expire after 12 hours by default and logout revokes them.
 - Existing anonymous orders are migrated and retained, but cannot be assigned to a citizen retroactively because the legacy database has no citizen identity.
 
