@@ -140,6 +140,8 @@ py -m unittest discover -s tests -v
 
 On macOS or Linux, use `python3 -m unittest discover -s tests -v` from `backend`.
 
+GitHub Actions runs this suite on pushes and pull requests targeting `main`, validates the production Compose configuration, builds the Docker image, and waits for the container readiness endpoint before checking the citizen page.
+
 ### Optional: Configure the OTP secret
 
 For local development, the backend uses a demo OTP secret by default. Set `JALSETU_OTP_SECRET` before starting the backend if you want to use a custom secret:
