@@ -936,6 +936,27 @@ def get_status(order_id: str, authorization: str | None = Header(default=None)):
     return StatusResponse(**{key: order[key] for key in ("order_id", "status", "operator_id", "capacity_l", "price")})
 
 
+@app.post("/orders/{order_id}/cancel")
+def cancel_order(order_id: str, authorization: str | None = Header(default=None)):
+    user = authenticated_user(authorization)
+    require_role(user, "citizen")
+    order = fetch_order(order_id)
+    if order is None:
+        raise api_error(404, "ORDER_NOT_FOUND", "Order was not found")
+    if not can_view_order(user, order):
+        raise api_error(403, "ORDER_FORBIDDEN", "This order is not assigned to your account")
+    if order["status"] not in {"OFFERED", "CONFIRMED"}:
+        raise api_error(409, "INVALID_STATE", "Orders can only be cancelled before the operator dispatches")
+    if not update_order(
+        order_id,
+        expected_status=order["status"],
+        status="CANCELLED",
+        otp_hash=None,
+    ):
+        raise api_error(409, "INVALID_STATE", "This order changed; refresh before cancelling")
+    return {"order_id": order_id, "status": "CANCELLED"}
+
+
 @app.get("/upi-qr")
 def get_upi_qr(order_id: str, authorization: str | None = Header(default=None)):
     user = authenticated_user(authorization)

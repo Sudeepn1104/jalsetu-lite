@@ -302,6 +302,54 @@ class APIWorkflowTests(unittest.TestCase):
         events = [event["to_status"] for event in history["orders"][0]["events"]]
         self.assertEqual(events, ["OFFERED", "CONFIRMED", "DISPATCHED", "ARRIVED", "DELIVERED"])
 
+    def test_citizen_can_cancel_before_dispatch_and_history_records_the_change(self) -> None:
+        citizen_token = self.register_citizen("cancel")
+        order_id, _ = self.create_order(citizen_token)
+
+        status, body = self.request("POST", f"/orders/{order_id}/cancel", token=self.operator_token)
+        self.assertEqual(status, 403, body)
+        self.assertEqual(body["error"], "ROLE_FORBIDDEN")
+
+        status, body = self.request("POST", f"/orders/{order_id}/cancel", token=citizen_token)
+        self.assertEqual(status, 200, body)
+        self.assertEqual(body, {"order_id": order_id, "status": "CANCELLED"})
+
+        status, order = self.request("GET", f"/status/{order_id}", token=citizen_token)
+        self.assertEqual(status, 200, order)
+        self.assertEqual(order["status"], "CANCELLED")
+
+        status, body = self.request("POST", f"/operator/dispatch/{order_id}", token=self.operator_token)
+        self.assertEqual(status, 409, body)
+        self.assertEqual(body["error"], "INVALID_STATE")
+
+        status, history = self.request("GET", "/auth/history", token=citizen_token)
+        self.assertEqual(status, 200, history)
+        self.assertEqual(
+            [event["to_status"] for event in history["orders"][0]["events"]],
+            ["OFFERED", "CONFIRMED", "CANCELLED"],
+        )
+
+    def test_cancellation_and_dispatch_race_has_exactly_one_winner(self) -> None:
+        citizen_token = self.register_citizen("cancel-race")
+        order_id, _ = self.create_order(citizen_token)
+
+        def cancel() -> int:
+            return self.request("POST", f"/orders/{order_id}/cancel", token=citizen_token)[0]
+
+        def dispatch() -> int:
+            return self.request("POST", f"/operator/dispatch/{order_id}", token=self.operator_token)[0]
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(lambda action: action(), (cancel, dispatch)))
+        self.assertCountEqual(results, [200, 409])
+
+        status, body = self.request("GET", f"/status/{order_id}", token=citizen_token)
+        self.assertEqual(status, 200, body)
+        self.assertIn(body["status"], {"CANCELLED", "DISPATCHED"})
+        if body["status"] == "DISPATCHED":
+            status, body = self.request("POST", f"/orders/{order_id}/cancel", token=citizen_token)
+            self.assertEqual(status, 409, body)
+
     def test_third_incorrect_otp_disputes_the_order(self) -> None:
         citizen_token = self.register_citizen("otp-lock")
         order_id, correct_otp = self.create_order(citizen_token)
@@ -352,6 +400,10 @@ class APIWorkflowTests(unittest.TestCase):
         order_id, _ = self.create_order(owner_token)
 
         status, body = self.request("GET", f"/status/{order_id}", token=other_token)
+        self.assertEqual(status, 403, body)
+        self.assertEqual(body["error"], "ORDER_FORBIDDEN")
+
+        status, body = self.request("POST", f"/orders/{order_id}/cancel", token=other_token)
         self.assertEqual(status, 403, body)
         self.assertEqual(body["error"], "ORDER_FORBIDDEN")
 

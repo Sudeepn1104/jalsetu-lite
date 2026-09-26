@@ -27,7 +27,9 @@ In rapidly growing urban and suburban regions, water tanker delivery is heavily 
   Deliveries require a server-side HMAC 4-digit OTP and a **95% meter volume validation check**: `((meter_after - meter_before) >= 0.95 * capacity_l)`.
 3. **Automatic dispute lock**  
   Three incorrect OTP attempts or a volume deficit automatically lock the transaction in the `DISPUTED` state.
-4. **Operator-directed UPI payment request**
+4. **Pre-dispatch cancellation**
+  Citizens can cancel their own offered or confirmed order before dispatch. A conditional state transition prevents cancellation and dispatch from both succeeding at once, and the change remains in the order history.
+5. **Operator-directed UPI payment request**
   For a confirmed order, the API generates a fixed-amount UPI deep-link QR addressed to that operator and tagged with the order reference. Configure a verified payee VPA for each operator before using this flow. JalSetu Lite does not receive payment-provider callbacks, verify settlement, or hold funds, so users must verify payment in their UPI app and the UI never marks a transfer as paid.
 
 ---
@@ -39,6 +41,7 @@ In rapidly growing urban and suburban regions, water tanker delivery is heavily 
                           │
                           ▼
                      CONFIRMED ➔ DISPATCHED (Operator Dashboard)
+                         └──────➔ CANCELLED (Citizen, before dispatch)
                           │
                           ▼
                       ARRIVED ➔ DELIVERED (Verified by OTP + Meter Delta)

@@ -8,9 +8,11 @@ Base URL (local dev): `http://localhost:8000`
 ## Order states
 ```
 SEARCHING -> OFFERED -> CONFIRMED -> DISPATCHED -> ARRIVED -> DELIVERED
-                                                            -> DISPUTED
-CONFIRMED -> CANCELLED (no-show only)
+     |                   |                                    -> DISPUTED
+     +------ CANCELLED <-+
 ```
+
+Citizens may cancel an order in OFFERED or CONFIRMED before operator dispatch. Dispatch and cancellation use a conditional state transition; exactly one can succeed if they race. Any payment made directly to an operator is outside JalSetu's control and must be refunded by that operator.
 
 ## 1. POST /search
 Request:
@@ -74,6 +76,10 @@ Response:
 { "order_id": "JS-1042", "status": "DISPATCHED", "operator_id": "D", "capacity_l": 6000, "price": 1110 }
 ```
 Frontend polls this every 2 seconds while status is CONFIRMED/DISPATCHED/ARRIVED.
+
+## 4a. POST /orders/{order_id}/cancel
+
+No body. Citizens may cancel only their own OFFERED or CONFIRMED orders, before dispatch. Response: `{ "order_id": "JS-1042", "status": "CANCELLED" }`. Returns 409 if dispatch has already started or another state change won the race. The cancellation is recorded in order history.
 
 ## 5. POST /driver/arrive/{order_id}
 No body. Response: `{ "status": "ARRIVED" }`
