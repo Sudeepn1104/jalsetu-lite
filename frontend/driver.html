@@ -3,9 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JalSetu-Lite | Driver</title>
-<script src="./auth.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JalSetu-Lite | Driver</title>
+  <script src="./auth.js"></script>
   <style>
     * {
       box-sizing: border-box
@@ -449,8 +449,10 @@
       <label for="order_id">Order ID</label>
       <input type="text" id="order_id" placeholder="Enter Order ID" autocomplete="off" autocapitalize="characters">
       <button id="arrivalBtn" type="button" onclick="markArrival()" style="display:none">MARK ARRIVAL</button>
-      <button id="statusBtn" class="secondary-action" type="button" onclick="checkOrderStatus(true)">CHECK ORDER STATUS</button>
-      <button id="nextOrderBtn" class="secondary-action" type="button" onclick="startNextOrder()" style="display:none">CHECK ANOTHER ORDER</button>
+      <button id="statusBtn" class="secondary-action" type="button" onclick="checkOrderStatus(true)">CHECK ORDER
+        STATUS</button>
+      <button id="nextOrderBtn" class="secondary-action" type="button" onclick="startNextOrder()"
+        style="display:none">CHECK ANOTHER ORDER</button>
       <div id="arrivalStatus" class="status" role="status" aria-live="polite"></div>
     </div>
 
