@@ -29,6 +29,34 @@ def reserve_port() -> int:
 
 
 class APIWorkflowTests(unittest.TestCase):
+    def test_readiness_requires_a_usable_database_schema(self) -> None:
+        from fastapi import HTTPException
+        from main import health_ready
+
+        with tempfile.TemporaryDirectory(prefix="jalsethu-health-test-") as temporary_directory:
+            missing_schema = Path(temporary_directory) / "empty.sqlite3"
+            connection = sqlite3.connect(missing_schema)
+            connection.close()
+            with patch("main.DB_PATH", missing_schema):
+                with self.assertRaises(HTTPException) as failure:
+                    health_ready()
+            self.assertEqual(failure.exception.status_code, 503)
+            self.assertEqual(failure.exception.detail["error"], "DATABASE_NOT_READY")
+
+            missing_database = Path(temporary_directory) / "missing.sqlite3"
+            with patch("main.DB_PATH", missing_database):
+                with self.assertRaises(HTTPException) as failure:
+                    health_ready()
+            self.assertEqual(failure.exception.detail["error"], "DATABASE_UNAVAILABLE")
+            self.assertFalse(missing_database.exists())
+
+        live_status, live_body = self.request("GET", "/health/live")
+        self.assertEqual(live_status, 200, live_body)
+        self.assertEqual(live_body["status"], "ok")
+        ready_status, ready_body = self.request("GET", "/health/ready")
+        self.assertEqual(ready_status, 200, ready_body)
+        self.assertEqual(ready_body, {"status": "ok", "database": "ok"})
+
     def test_production_configuration_rejects_weak_secrets_and_unsafe_cors(self) -> None:
         base = os.environ.copy()
         production_database = Path(tempfile.gettempdir()) / f"jalsethu-production-config-{os.getpid()}.sqlite3"

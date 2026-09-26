@@ -823,9 +823,31 @@ def filter_and_sort_operators(
     return offers
 
 
-@app.get("/health")
-def health():
+@app.get("/health/live")
+def health_live():
     return {"status": "ok"}
+
+
+@app.get("/health/ready")
+@app.get("/health")
+def health_ready():
+    required_tables = {"orders", "users", "auth_sessions", "order_events"}
+    if not DB_PATH.is_file():
+        raise api_error(503, "DATABASE_UNAVAILABLE", "The service database is unavailable")
+    try:
+        with get_connection() as connection:
+            tables = {
+                row["name"]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ).fetchall()
+            }
+    except sqlite3.Error as exc:
+        raise api_error(503, "DATABASE_UNAVAILABLE", "The service database is unavailable") from exc
+    missing_tables = required_tables - tables
+    if missing_tables:
+        raise api_error(503, "DATABASE_NOT_READY", "The service database schema is incomplete")
+    return {"status": "ok", "database": "ok"}
 
 
 @app.post("/search", response_model=SearchResponse)

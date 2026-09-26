@@ -208,7 +208,7 @@ Use different random values of at least 32 bytes for both secrets. In production
 docker compose up --build -d
 ```
 
-3. Check `http://localhost:8000/health`, then open the citizen page at `http://localhost:8000/`. Operator and driver accounts can be created through `POST /auth/admin/users` using the secret header; citizens self-register in the app.
+3. Check `http://localhost:8000/health/ready`, then open the citizen page at `http://localhost:8000/`. `/health/live` checks the API process; `/health/ready` (also `/health`) checks that the database and required schema are available. Operator and driver accounts can be created through `POST /auth/admin/users` using the secret header; citizens self-register in the app.
 
 The named `jalsethu-data` volume stores `/data/jalsetu.db` across container restarts. Back it up regularly. Configure the actual deployed origin in `JALSETHU_CORS_ORIGINS`; keep HTTPS enabled at the deployment edge. Set verified `JALSETHU_UPI_ID_<operator-id>` values for each payee in the deployment environment. A QR is a payment request only: integrate a payment provider and verify its signed settlement callbacks before representing a payment as confirmed.
 
