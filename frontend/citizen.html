@@ -131,11 +131,11 @@ function initialTheme(){
 
 var I18N = {
  en:{sub:"Compare public and private water tankers near you",
-  steps:["Request","Offers","Pay","Track","Deliver"],
+  steps:["Request","Offers","Track","Deliver","Pay"],
   reqH:"Request a tanker", size:"Tanker size", wtype:"Water type", fresh:"Fresh water", treated:"Treated water", switchToLight:"Switch to light mode", switchToDark:"Switch to dark mode",
   locationHeading:"Delivery location", loc:"Or tap the map to set your pin", locationSearchHint:"Enter an address, area, or landmark to find it on the map.", selectedLocation:"Selected location: ", currentLocationName:"Current location", pinnedLocation:"Map pin", locatingAddress:"Finding the address for this pin…", pinAddressFound:"Pin address updated.", pinAddressUnavailable:"No address found; the pin is saved at the shown coordinates.", locationLabel:"Search location", locationPlaceholder:"Address, area, or landmark", searchLocation:"Find", useCurrent:"Use current location", locatingCurrent:"Getting your location…", locationAccessErr:"Could not access your location. Allow location access and try again.", locating:"Searching for location…", locationFound:"Location found. Adjust the pin if needed.", pinSelected:"Location selected. Tap another spot to move the pin.", noLocation:"No matching location found. Try a nearby area or landmark.", locationErr:"Could not search now. Check your connection and try again.", find:"See offers", noPin:"Choose a location to see offers",
   offH:"Offers near you", pub:"Public option", above:"Above public rate by Rs ", pickOne:"Pick an offer to continue",
-  confirm:"Confirm this tanker", payNote:"Pay the operator directly by UPI before the tanker is dispatched. JalSetu Lite never holds your money.",
+  confirm:"Confirm this tanker", payNote:"You pay the operator directly by UPI after delivery. JalSetu Lite never holds your money.",
   min:"min", km:"km", per:"per 1,000 L", searching:"Finding offers…", searchErr:"Could not reach the server. Is the backend running on port 8000?",
   trkH:"Tanker on the way", eta:"Arriving in", arrivedH:"Tanker has arrived",
   delH:"Share this OTP with the driver", delSub:"Only share it when the tanker is at your door.",
@@ -145,11 +145,11 @@ var I18N = {
   dispH:"Order disputed", dispTxt:"This has been recorded on the operator's scorecard. Contact support if this needs review.",
   again:"New request", foot:"Prototype by Team Diamonds — Build for Billions, NITK Surathkal."},
  kn:{sub:"ನಿಮ್ಮ ಹತ್ತಿರದ ಸರ್ಕಾರಿ ಮತ್ತು ಖಾಸಗಿ ಟ್ಯಾಂಕರ್ ಹೋಲಿಕೆ",
-  steps:["ವಿನಂತಿ","ಆಫರ್","ಪಾವತಿ","ಟ್ರ್ಯಾಕ್","ವಿತರಣೆ"],
+  steps:["ವಿನಂತಿ","ಆಫರ್","ಟ್ರ್ಯಾಕ್","ವಿತರಣೆ","ಪಾವತಿ"],
   reqH:"ಟ್ಯಾಂಕರ್ ಕೇಳಿ", size:"ಟ್ಯಾಂಕರ್ ಗಾತ್ರ", wtype:"ನೀರಿನ ಪ್ರಕಾರ", fresh:"ಶುದ್ಧ ನೀರು", treated:"ಸಂಸ್ಕರಿತ ನೀರು", switchToLight:"ಬೆಳಕು ಮೋಡ್‌ಗೆ ಬದಲಿಸಿ", switchToDark:"ಕತ್ತಲೆ ಮೋಡ್‌ಗೆ ಬದಲಿಸಿ",
   locationHeading:"ವಿತರಣಾ ಸ್ಥಳ", loc:"ಅಥವಾ ಪಿನ್ ಹಾಕಲು ನಕ್ಷೆಯನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ", locationSearchHint:"ನಕ್ಷೆಯಲ್ಲಿ ಹುಡುಕಲು ವಿಳಾಸ, ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತನ್ನು ನಮೂದಿಸಿ.", selectedLocation:"ಆಯ್ಕೆ ಮಾಡಿದ ಸ್ಥಳ: ", currentLocationName:"ಪ್ರಸ್ತುತ ಸ್ಥಳ", pinnedLocation:"ನಕ್ಷೆಯಲ್ಲಿ ಗುರುತಿಸಿದ ಸ್ಥಳ", locatingAddress:"ಈ ಪಿನ್‌ನ ವಿಳಾಸ ಹುಡುಕಲಾಗುತ್ತಿದೆ…", pinAddressFound:"ಪಿನ್‌ನ ವಿಳಾಸ ನವೀಕರಿಸಲಾಗಿದೆ.", pinAddressUnavailable:"ವಿಳಾಸ ಸಿಗಲಿಲ್ಲ. ಪಿನ್ ನಿರ್ದೇಶಾಂಕಗಳೊಂದಿಗೆ ಉಳಿಸಲಾಗಿದೆ.", locationLabel:"ಸ್ಥಳ ಹುಡುಕಿ", locationPlaceholder:"ವಿಳಾಸ, ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತು", searchLocation:"ಹುಡುಕಿ", useCurrent:"ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ", locatingCurrent:"ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗುತ್ತಿದೆ…", locationAccessErr:"ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗಲಿಲ್ಲ. ಸ್ಥಳ ಅನುಮತಿ ನೀಡಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", locating:"ಸ್ಥಳ ಹುಡುಕಲಾಗುತ್ತಿದೆ…", locationFound:"ಸ್ಥಳ ಕಂಡುಬಂದಿದೆ. ಬೇಕಾದರೆ ಪಿನ್ ಸರಿಪಡಿಸಿ.", pinSelected:"ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ. ಪಿನ್ ಸರಿಸಲು ನಕ್ಷೆಯ ಬೇರೆ ಸ್ಥಳ ಟ್ಯಾಪ್ ಮಾಡಿ.", noLocation:"ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ಹತ್ತಿರದ ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತು ಹುಡುಕಿ.", locationErr:"ಈಗ ಸ್ಥಳ ಹುಡುಕಲಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", find:"ಆಫರ್‌ಗಳನ್ನು ನೋಡಿ", noPin:"ಆಫರ್‌ಗಳನ್ನು ನೋಡಲು ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ",
   offH:"ಹತ್ತಿರದ ಆಫರ್‌ಗಳು", pub:"ಸರ್ಕಾರಿ ಆಯ್ಕೆ", above:"ಸರ್ಕಾರಿ ದರಕ್ಕಿಂತ ಹೆಚ್ಚು: ₹", pickOne:"ಮುಂದುವರಿಯಲು ಒಂದು ಆಫರ್ ಆಯ್ಕೆಮಾಡಿ",
-  confirm:"ಈ ಟ್ಯಾಂಕರ್ ದೃಢೀಕರಿಸಿ", payNote:"ಟ್ಯಾಂಕರ್ ಹೊರಡುವ ಮೊದಲು ಆಪರೇಟರ್‌ಗೆ UPI ಮೂಲಕ ನೇರವಾಗಿ ಪಾವತಿಸಿ.",
+  confirm:"ಈ ಟ್ಯಾಂಕರ್ ದೃಢೀಕರಿಸಿ", payNote:"ವಿತರಣೆಯ ನಂತರ ನೀವು ನೇರವಾಗಿ UPI ಮೂಲಕ ಪಾವತಿಸುತ್ತೀರಿ.",
   min:"ನಿಮಿಷ", km:"ಕಿ.ಮೀ", per:"1,000 ಲೀ.ಗೆ", searching:"ಆಫರ್‌ಗಳನ್ನು ಹುಡುಕುತ್ತಿದೆ…", searchErr:"ಸರ್ವರ್ ತಲುಪಲಾಗಲಿಲ್ಲ. ಬ್ಯಾಕೆಂಡ್ ಪೋರ್ಟ್ 8000ರಲ್ಲಿ ಚಾಲನೆಯಲ್ಲಿದೆಯೇ?",
   trkH:"ಟ್ಯಾಂಕರ್ ಬರುತ್ತಿದೆ", eta:"ತಲುಪಲು", arrivedH:"ಟ್ಯಾಂಕರ್ ತಲುಪಿದೆ",
   delH:"ಈ OTP ಚಾಲಕರಿಗೆ ಹೇಳಿ", delSub:"ಟ್ಯಾಂಕರ್ ಬಾಗಿಲಲ್ಲಿ ಬಂದಾಗ ಮಾತ್ರ ಹೇಳಿ.",
@@ -252,12 +252,6 @@ function render(){
     h += '<button class="btn" data-act="confirm" '+(S.sel?'':'disabled')+'>'+(S.sel?t("confirm"):t("pickOne"))+'</button></div>';
   }
   else if(S.step === 2){
-    var o = S.offers.filter(function(x){ return x.operator_id === S.sel; })[0] || {price:0, name:""};
-    h += '<div class="card"><h2>'+t("payH")+'</h2><p>'+t("payAmt")+': <strong>Rs '+num(o.price)+'</strong> ('+o.name+')</p>';
-    h += qrSVG(o.price) + '<p class="meta" style="text-align:center">'+t("qrNote")+'</p>';
-    h += '<button class="btn gold" data-act="paid">'+t("donePay")+'</button></div>';
-  }
-  else if(S.step === 3){
     var st = S.status || "CONFIRMED";
     h += '<div class="card"><h2>'+(st==="ARRIVED"?t("arrivedH"):t("trkH"))+'</h2>';
     h += '<div class="bar"><i style="width:'+(st==="ARRIVED"?100:st==="DISPATCHED"?55:15)+'%"></i></div>';
@@ -265,13 +259,19 @@ function render(){
     if(S.err) h += '<div class="msg err">'+S.err+'</div>';
     h += '</div>';
   }
-  else if(S.step === 4){
+  else if(S.step === 3){
     if(S.status === "DISPUTED"){
       h += '<div class="card"><h2>'+t("dispH")+'</h2><p class="meta">'+t("dispTxt")+'</p><button class="btn" data-act="reset">'+t("again")+'</button></div>';
     } else {
       h += '<div class="card"><h2>'+t("delH")+'</h2><p class="meta">'+t("delSub")+'</p><div class="otp">'+(S.otp||"----")+'</div>';
       h += '<p class="meta" style="text-align:center">'+t("waitDeliver")+'</p></div>';
     }
+  }
+  else if(S.step === 4){
+    var o = S.offers.filter(function(x){ return x.operator_id === S.sel; })[0] || {price:0, name:""};
+    h += '<div class="card"><h2>'+t("payH")+'</h2><p>'+t("payAmt")+': <strong>Rs '+num(o.price)+'</strong> ('+o.name+')</p>';
+    h += qrSVG(o.price) + '<p class="meta" style="text-align:center">'+t("qrNote")+'</p>';
+    h += '<button class="btn gold" data-act="paid">'+t("donePay")+'</button></div>';
   }
   else if(S.step === 5){
     var o2 = S.offers.filter(function(x){ return x.operator_id === S.sel; })[0] || {price:0, name:""};
@@ -363,13 +363,13 @@ function startPoll(){
     try{
       var st = await api("/status/" + S.orderId);
       S.status = st.status;
-      if(S.status === "ARRIVED" && S.step === 3){
-        S.step = 4; render();
-      } else if((S.status === "DISPATCHED" || S.status === "CONFIRMED") && S.step === 3){
+      if(S.status === "ARRIVED" && S.step === 2){
+        S.step = 3; render();
+      } else if((S.status === "DISPATCHED" || S.status === "CONFIRMED") && S.step === 2){
         render();
       }
-      if(S.status === "DISPUTED"){ stopPoll(); S.step = 4; render(); }
-      if(S.status === "DELIVERED"){ stopPoll(); S.step = 5; render(); }
+      if(S.status === "DISPUTED"){ stopPoll(); S.step = 3; render(); }
+      if(S.status === "DELIVERED"){ stopPoll(); S.step = 4; render(); }
     }catch(e){ /* transient network hiccup — keep polling */ }
   }, 2000);
 }
@@ -435,9 +435,10 @@ document.addEventListener("click", async function(e){
       S.orderId = sel.order_id;
       var conf = await api("/confirm", { method:"POST", body: JSON.stringify({ order_id: S.orderId })});
       S.otp = conf.otp; S.status = "CONFIRMED"; S.step = 2; S.err = ""; render();
+      startPoll();
     }catch(err){ S.err = err.message; render(); }
   }
-  else if(a === "paid"){ S.step = 3; render(); startPoll(); }
+  else if(a === "paid"){ S.step = 5; render(); }
   else if(a === "reset"){ reset(); }
 });
 
