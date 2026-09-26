@@ -2,14 +2,15 @@ services:
   jalsethu:
     build: .
     restart: unless-stopped
+    init: true
     ports:
-      - "8000:8000"
+      - "${JALSETHU_BIND_ADDRESS:-127.0.0.1}:${JALSETHU_PORT:-8000}:8000"
     environment:
       JALSETHU_ENV: production
       JALSETHU_DB_PATH: /data/jalsetu.db
       JALSETU_OTP_SECRET: ${JALSETU_OTP_SECRET:?Set a unique JALSETU_OTP_SECRET in .env}
       JALSETHU_ADMIN_TOKEN: ${JALSETHU_ADMIN_TOKEN:?Set a unique JALSETHU_ADMIN_TOKEN in .env}
-      JALSETHU_CORS_ORIGINS: ${JALSETHU_CORS_ORIGINS:-http://localhost:8000}
+      JALSETHU_CORS_ORIGINS: ${JALSETHU_CORS_ORIGINS:?Set the exact HTTPS app origin in .env}
       JALSETHU_UPI_ID_P: ${JALSETHU_UPI_ID_P:-}
       JALSETHU_UPI_ID_A: ${JALSETHU_UPI_ID_A:-}
       JALSETHU_UPI_ID_B: ${JALSETHU_UPI_ID_B:-}
@@ -20,6 +21,15 @@ services:
       JALSETHU_UPI_ID_G: ${JALSETHU_UPI_ID_G:-}
     volumes:
       - jalsethu-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 1.0
 
 volumes:
   jalsethu-data:

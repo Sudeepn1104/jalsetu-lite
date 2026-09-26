@@ -190,7 +190,7 @@ Use `JALSETHU_UPI_ID_P`, `JALSETHU_UPI_ID_B`, and so on for the other operator I
 
 ## Deploy with Docker
 
-The container serves the API and all static dashboards on one origin, and persists the SQLite database in a named volume. Use one application instance when using SQLite.
+The container serves the API and all static dashboards on one origin, and persists the SQLite database in a named volume. It runs as a non-root user, mounts the application filesystem read-only, drops Linux capabilities, disables privilege escalation, and has memory/CPU limits. Port 8000 binds to `127.0.0.1` by default so it is not directly exposed to the internet; terminate TLS at a host-level reverse proxy. If the TLS proxy runs in another container, use a deployment-specific Compose override to remove the host `ports` mapping, attach both containers to a private network, and set `JALSETHU_BIND_ADDRESS=0.0.0.0`. Use one application instance when using SQLite.
 
 1. Create a local `.env` file (never commit it) with unique, randomly generated values:
 
@@ -198,9 +198,12 @@ The container serves the API and all static dashboards on one origin, and persis
 JALSETU_OTP_SECRET=<long-random-secret>
 JALSETHU_ADMIN_TOKEN=<different-long-random-secret>
 JALSETHU_CORS_ORIGINS=https://your-deployed-domain.example
+# Optional: leave defaults to bind the app only on localhost:8000 behind a host-level TLS proxy.
+# JALSETHU_BIND_ADDRESS=127.0.0.1
+# JALSETHU_PORT=8000
 ```
 
-Use different random values of at least 32 bytes for both secrets. In production, startup rejects missing, short, demo, or duplicate secrets and rejects wildcard CORS origins. List only the exact frontend origins, separated by commas; public origins must use HTTPS. HTTP origins are allowed only for localhost development.
+Use different random values of at least 32 bytes for both secrets. In production, startup rejects missing, short, demo, or duplicate secrets and rejects wildcard CORS origins. Set the exact frontend origin in `JALSETHU_CORS_ORIGINS`; Compose intentionally fails if it is omitted. Public origins must use HTTPS. HTTP origins are allowed only for localhost development. For example, generate secrets with `python -c "import secrets; print(secrets.token_urlsafe(48))"` twice and paste each output into the corresponding entry.
 
 2. Build and start:
 
