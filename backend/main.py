@@ -1,13 +1,4 @@
 """
-JalSetu Lite — backend (Team Diamonds, Build for Billions)
-
-Run:
-    pip install -r requirements.txt --break-system-packages
-    uvicorn main:app --reload --port 8000
-
-Check http://localhost:8000/docs before wiring any frontend fetch() call
-(Execution Rule #3: Test First).
-
 Endpoints implemented (see docs/api_contract.md for exact schemas):
     GET  /health
     POST /search
