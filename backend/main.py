@@ -27,7 +27,11 @@ import qrcode.image.svg
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="JalSetu Lite API")
-cors_origins = [origin.strip() for origin in os.environ.get("JALSETHU_CORS_ORIGINS", "*").split(",") if origin.strip()]
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("JALSETHU_CORS_ORIGINS", "*").split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -48,11 +52,44 @@ DB_PATH = Path(os.environ.get("JALSETHU_DB_PATH", Path(__file__).resolve().paren
 FRONTEND_PATH = Path(__file__).resolve().parent.parent / "frontend"
 SESSION_SECONDS = int(os.environ.get("JALSETHU_SESSION_SECONDS", "43200"))
 PASSWORD_ITERATIONS = 310000
+
+
+def validate_production_settings(environment: dict[str, str]) -> None:
+    otp_secret = environment.get("JALSETU_OTP_SECRET", "")
+    admin_token = environment.get("JALSETHU_ADMIN_TOKEN", "")
+    if len(otp_secret.encode()) < 32 or otp_secret == "jalsethu-demo-secret-change-before-deploy":
+        raise RuntimeError("JALSETU_OTP_SECRET must be a unique secret of at least 32 bytes")
+    if len(admin_token.encode()) < 32:
+        raise RuntimeError("JALSETHU_ADMIN_TOKEN must be a unique secret of at least 32 bytes")
+    if hmac.compare_digest(otp_secret.encode(), admin_token.encode()):
+        raise RuntimeError("JALSETU_OTP_SECRET and JALSETHU_ADMIN_TOKEN must be different")
+
+    origins_value = environment.get("JALSETHU_CORS_ORIGINS", "")
+    origins = [origin.strip() for origin in origins_value.split(",") if origin.strip()]
+    if not origins or "*" in origins:
+        raise RuntimeError("Set JALSETHU_CORS_ORIGINS to one or more explicit origins; wildcards are not allowed")
+    for origin in origins:
+        try:
+            parsed = urlsplit(origin)
+            parsed.port
+        except ValueError as exc:
+            raise RuntimeError(f"Invalid CORS origin {origin!r}") from exc
+        is_local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or (parsed.scheme != "https" and not is_local_http)
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise RuntimeError(f"Invalid CORS origin {origin!r}; use an HTTPS origin (HTTP is allowed for localhost)")
+
+
 if os.environ.get("JALSETHU_ENV", "development").lower() == "production":
-    if "JALSETU_OTP_SECRET" not in os.environ:
-        raise RuntimeError("Set JALSETU_OTP_SECRET to a unique production secret")
-    if not os.environ.get("JALSETHU_ADMIN_TOKEN"):
-        raise RuntimeError("Set JALSETHU_ADMIN_TOKEN to provision operator and driver accounts")
+    validate_production_settings(os.environ)
 
 
 class APIModel(BaseModel):

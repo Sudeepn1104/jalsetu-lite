@@ -197,6 +197,8 @@ JALSETHU_ADMIN_TOKEN=<different-long-random-secret>
 JALSETHU_CORS_ORIGINS=https://your-deployed-domain.example
 ```
 
+Use different random values of at least 32 bytes for both secrets. In production, startup rejects missing, short, demo, or duplicate secrets and rejects wildcard CORS origins. List only the exact frontend origins, separated by commas; public origins must use HTTPS. HTTP origins are allowed only for localhost development.
+
 2. Build and start:
 
 ```bash

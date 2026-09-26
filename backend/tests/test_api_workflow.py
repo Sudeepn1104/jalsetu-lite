@@ -29,6 +29,63 @@ def reserve_port() -> int:
 
 
 class APIWorkflowTests(unittest.TestCase):
+    def test_production_configuration_rejects_weak_secrets_and_unsafe_cors(self) -> None:
+        base = os.environ.copy()
+        base.update(
+            {
+                "JALSETHU_ENV": "production",
+                "JALSETU_OTP_SECRET": "o" * 40,
+                "JALSETHU_ADMIN_TOKEN": "a" * 40,
+                "JALSETHU_CORS_ORIGINS": "https://app.example.test",
+                "JALSETHU_DB_PATH": str(
+                    Path(tempfile.gettempdir()) / f"jalsethu-production-config-{os.getpid()}.sqlite3"
+                ),
+            }
+        )
+        invalid_settings = (
+            ("JALSETU_OTP_SECRET", "short"),
+            ("JALSETU_OTP_SECRET", "jalsethu-demo-secret-change-before-deploy"),
+            ("JALSETHU_ADMIN_TOKEN", "short"),
+            ("JALSETHU_ADMIN_TOKEN", "o" * 40),
+            ("JALSETHU_CORS_ORIGINS", "*"),
+            ("JALSETHU_CORS_ORIGINS", "http://app.example.test"),
+            ("JALSETHU_CORS_ORIGINS", "https://app.example.test/path"),
+            ("JALSETHU_CORS_ORIGINS", "https://app.example.test:bad"),
+        )
+        for key, value in invalid_settings:
+            with self.subTest(setting=key, value=value):
+                environment = base.copy()
+                environment[key] = value
+                result = subprocess.run(
+                    [sys.executable, "-c", "import main"],
+                    cwd=BACKEND_DIR,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("RuntimeError", result.stderr)
+
+        valid = subprocess.run(
+            [sys.executable, "-c", "import main"],
+            cwd=BACKEND_DIR,
+            env=base,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(valid.returncode, 0, valid.stderr)
+
+        local = base.copy()
+        local["JALSETHU_CORS_ORIGINS"] = "http://localhost:8000"
+        local_valid = subprocess.run(
+            [sys.executable, "-c", "import main"],
+            cwd=BACKEND_DIR,
+            env=local,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(local_valid.returncode, 0, local_valid.stderr)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.temp_dir = tempfile.TemporaryDirectory(prefix="jalsethu-api-tests-")
