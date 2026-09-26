@@ -223,6 +223,98 @@ def otp_digest(order_id: str, otp: str) -> str:
     return hmac.new(OTP_SECRET, f"{order_id}:{otp}".encode(), hashlib.sha256).hexdigest()
 
 
+def filter_and_sort_operators(
+    lat: float,
+    lng: float,
+    capacity_l: int,
+    water_type: str,
+    *,
+    operators: list[dict] | None = None,
+    tariff_public: dict[int, int] | None = None,
+) -> list[Offer]:
+    """Return offers filtered by *water_type*, enriched with pricing and a
+    *flagged* indicator, and sorted ascending by *distance_km*.
+
+    Pricing rules (from api_contract.md §1):
+      - public  → ``price = tariff_public[capacity_l]``
+      - private → ``price = round(rate_per_1000l * capacity_l / 1000)``
+
+    Flagging rule:
+      - ``flagged = True`` when *water_type* is **"fresh"**, the operator is
+        **private**, and *price* exceeds the public benchmark tariff for that
+        capacity.  Treated-water offers are **never** flagged.
+
+    Args:
+        lat: Delivery-point latitude in decimal degrees (−90 … 90).
+        lng: Delivery-point longitude in decimal degrees (−180 … 180).
+        capacity_l: Requested tanker capacity in litres (must be a key in
+            *tariff_public*; typically 4000, 5000, 6000, or 12000).
+        water_type: ``"fresh"`` or ``"treated"``.
+        operators: Optional override for the operator list (defaults to the
+            module-level ``SEED_DATA["operators"]``).  Useful in unit tests.
+        tariff_public: Optional override for the tariff table (defaults to the
+            module-level ``TARIFF_PUBLIC``).  Useful in unit tests.
+
+    Returns:
+        List of :class:`Offer` instances sorted by ``distance_km`` ascending.
+
+    Raises:
+        ValueError: If *capacity_l* is not present in *tariff_public*.
+    """
+    _operators = operators if operators is not None else SEED_DATA["operators"]
+    _tariff = tariff_public if tariff_public is not None else TARIFF_PUBLIC
+
+    if capacity_l not in _tariff:
+        raise ValueError(
+            f"capacity_l={capacity_l} is not in the public tariff table. "
+            f"Supported values: {sorted(_tariff)}"
+        )
+
+    benchmark: int = _tariff[capacity_l]
+    offers: list[Offer] = []
+
+    for op in _operators:
+        # ── filter: only serve matching water type ──────────────────────────
+        if op["water_type"] != water_type:
+            continue
+
+        # ── distance (haversine) ────────────────────────────────────────────
+        distance = haversine_km(lat, lng, op)
+
+        # ── pricing ─────────────────────────────────────────────────────────
+        if op["type"] == "public":
+            price: int = _tariff[capacity_l]
+            price_per_1000l: int = round(price * 1000 / capacity_l)
+        else:
+            price_per_1000l = op["rate_per_1000l"]
+            price = round(price_per_1000l * capacity_l / 1000)
+
+        # ── flagging: private fresh water above public benchmark ─────────────
+        flagged: bool = (
+            water_type == "fresh"
+            and op["type"] == "private"
+            and price > benchmark
+        )
+
+        offers.append(
+            Offer(
+                operator_id=op["id"],
+                name=op["name"],
+                type=op["type"],
+                price=price,
+                price_per_1000l=price_per_1000l,
+                eta_min=max(1, math.ceil(distance * 12)),
+                distance_km=round(distance, 1),
+                rating=op["rating"],
+                flagged=flagged,
+            )
+        )
+
+    # ── sort ascending by distance ──────────────────────────────────────────
+    offers.sort(key=lambda o: o.distance_km)
+    return offers
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -231,12 +323,12 @@ def health():
 @app.post("/search", response_model=SearchResponse)
 def search(request: SearchRequest):
     require_capacity(request.capacity_l)
-    offers = [
-        make_offer(operator, request)
-        for operator in SEED_DATA["operators"]
-        if operator["water_type"] == request.water_type
-    ]
-    offers.sort(key=lambda offer: offer.distance_km)
+    offers = filter_and_sort_operators(
+        lat=request.lat,
+        lng=request.lng,
+        capacity_l=request.capacity_l,
+        water_type=request.water_type,
+    )
     return SearchResponse(offers=offers)
 
 
