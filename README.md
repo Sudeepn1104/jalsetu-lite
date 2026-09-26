@@ -140,7 +140,13 @@ py -m unittest discover -s tests -v
 
 On macOS or Linux, use `python3 -m unittest discover -s tests -v` from `backend`.
 
-GitHub Actions runs this suite on pushes and pull requests targeting `main`, validates the production Compose configuration, builds the Docker image, and waits for the container readiness endpoint before checking the citizen page.
+From the repository root, run the driver dashboard reset workflow check with Node.js:
+
+```bash
+node --test frontend/tests/*.test.mjs
+```
+
+GitHub Actions runs both suites on pushes and pull requests targeting `main`, validates the production Compose configuration, builds the Docker image, and waits for the container readiness endpoint before checking the citizen page.
 
 ### Optional: Configure the OTP secret
 
