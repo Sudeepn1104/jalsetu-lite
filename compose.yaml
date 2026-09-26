@@ -1,0 +1,17 @@
+services:
+  jalsethu:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      JALSETHU_ENV: production
+      JALSETHU_DB_PATH: /data/jalsetu.db
+      JALSETU_OTP_SECRET: ${JALSETU_OTP_SECRET:?Set a unique JALSETU_OTP_SECRET in .env}
+      JALSETHU_ADMIN_TOKEN: ${JALSETHU_ADMIN_TOKEN:?Set a unique JALSETHU_ADMIN_TOKEN in .env}
+      JALSETHU_CORS_ORIGINS: ${JALSETHU_CORS_ORIGINS:-http://localhost:8000}
+    volumes:
+      - jalsethu-data:/data
+
+volumes:
+  jalsethu-data:

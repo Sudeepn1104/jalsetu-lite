@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>JalSetu Lite — request water</title>
+<script src="./auth.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -91,7 +92,7 @@ td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
-<body>
+<body data-role="citizen">
 <div class="wrap">
   <header>
     <div>
@@ -117,7 +118,7 @@ td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
 "use strict";
 
 // ---- Config: change this if the backend runs elsewhere ----
-var API_BASE = "http://localhost:8000";
+var API_BASE = window.JALSETHU_API_BASE || "http://localhost:8000";
 var CAPS = [4000, 5000, 6000, 12000];
 var lastGeocodeAt = 0;
 
@@ -140,7 +141,7 @@ var I18N = {
   trkH:"Tanker on the way", eta:"Arriving in", arrivedH:"Tanker has arrived",
   delH:"Share this OTP with the driver", delSub:"Only share it when the tanker is at your door.",
   waitDeliver:"Waiting for the driver to confirm delivery…",
-  payH:"Pay the operator", payAmt:"Amount", qrNote:"Scan with any UPI app", donePay:"I have paid",
+  payH:"Pay the operator", payAmt:"Amount", qrNote:"Demo QR only. Configure the operator’s verified UPI ID before accepting payments.", donePay:"I have paid",
   doneH:"Delivered and paid", order:"Order", litres:"Litres recorded", status:"Status",
   dispH:"Order disputed", dispTxt:"This has been recorded on the operator's scorecard. Contact support if this needs review.",
   again:"New request", foot:"Prototype by Team Diamonds — Build for Billions, NITK Surathkal."},
@@ -154,7 +155,7 @@ var I18N = {
   trkH:"ಟ್ಯಾಂಕರ್ ಬರುತ್ತಿದೆ", eta:"ತಲುಪಲು", arrivedH:"ಟ್ಯಾಂಕರ್ ತಲುಪಿದೆ",
   delH:"ಈ OTP ಚಾಲಕರಿಗೆ ಹೇಳಿ", delSub:"ಟ್ಯಾಂಕರ್ ಬಾಗಿಲಲ್ಲಿ ಬಂದಾಗ ಮಾತ್ರ ಹೇಳಿ.",
   waitDeliver:"ಚಾಲಕರು ವಿತರಣೆ ದೃಢೀಕರಿಸುವುದನ್ನು ಕಾಯಲಾಗುತ್ತಿದೆ…",
-  payH:"ಆಪರೇಟರ್‌ಗೆ ಪಾವತಿಸಿ", payAmt:"ಮೊತ್ತ", qrNote:"ಯಾವುದೇ UPI ಆಪ್‌ನಿಂದ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ", donePay:"ಪಾವತಿಸಿದ್ದೇನೆ",
+  payH:"ಆಪರೇಟರ್‌ಗೆ ಪಾವತಿಸಿ", payAmt:"ಮೊತ್ತ", qrNote:"ಡೆಮೋ QR ಮಾತ್ರ. ಪಾವತಿ ಸ್ವೀಕರಿಸುವ ಮೊದಲು ಆಪರೇಟರ್‌ನ ಪರಿಶೀಲಿಸಿದ UPI ID ಹೊಂದಿಸಿ.", donePay:"ಪಾವತಿಸಿದ್ದೇನೆ",
   doneH:"ವಿತರಣೆ ಮತ್ತು ಪಾವತಿ ಪೂರ್ಣ", order:"ಆರ್ಡರ್", litres:"ದಾಖಲಾದ ಲೀಟರ್", status:"ಸ್ಥಿತಿ",
   dispH:"ಆರ್ಡರ್ ವಿವಾದಿತ", dispTxt:"ಇದನ್ನು ಆಪರೇಟರ್ ಸ್ಕೋರ್‌ಕಾರ್ಡ್‌ನಲ್ಲಿ ದಾಖಲಿಸಲಾಗಿದೆ.",
   again:"ಹೊಸ ವಿನಂತಿ", foot:"ಟೀಮ್ ಡೈಮಂಡ್ಸ್ ಅವರ ಮಾದರಿ — Build for Billions, NITK ಸುರತ್ಕಲ್."}
@@ -194,21 +195,7 @@ async function api(path, opts){
   return body;
 }
 
-function qrSVG(seed){
-  var n = 21, s = '<svg class="qr" width="150" height="150" viewBox="0 0 '+n+' '+n+'" role="img" aria-label="Demo UPI QR" shape-rendering="crispEdges">';
-  var x = seed % 9973 || 7;
-  function rnd(){ x = (x*1103515245 + 12345) & 0x7fffffff; return x; }
-  function finder(cx,cy){ return (cx<7&&cy<7)||(cx>=n-7&&cy<7)||(cx<7&&cy>=n-7); }
-  for(var y=0;y<n;y++){ for(var c=0;c<n;c++){
-    var on;
-    if(finder(c,y)){
-      var fx=c>=n-7?c-(n-7):c, fy=y>=n-7?y-(n-7):y;
-      on = (fx===0||fx===6||fy===0||fy===6) || (fx>=2&&fx<=4&&fy>=2&&fy<=4);
-    } else on = (rnd()>>8)%2===0;
-    if(on) s += '<rect x="'+c+'" y="'+y+'" width="1" height="1" fill="#000"/>';
-  }}
-  return s + '</svg>';
-}
+var paymentQrObjectUrl = null;
 
 function render(){
   document.documentElement.lang = S.lang === "kn" ? "kn" : "en";
@@ -254,7 +241,7 @@ function render(){
   else if(S.step === 2){
     var o = S.offers.filter(function(x){ return x.operator_id === S.sel; })[0] || {price:0, name:""};
     h += '<div class="card"><h2>'+t("payH")+'</h2><p>'+t("payAmt")+': <strong>Rs '+num(o.price)+'</strong> ('+o.name+')</p>';
-    h += qrSVG(o.price) + '<p class="meta" style="text-align:center">'+t("qrNote")+'</p>';
+    h += '<img class="qr" id="paymentQr" width="240" height="240" alt="Demo UPI payment QR"><p class="meta" id="qrStatus" role="status" style="text-align:center">Generating payment QR…</p>';
     h += '<button class="btn gold" data-act="paid">'+t("donePay")+'</button></div>';
   }
   else if(S.step === 3){
@@ -282,6 +269,24 @@ function render(){
     h += '<div style="height:12px"></div><button class="btn" data-act="reset">'+t("again")+'</button></div>';
   }
   v.innerHTML = h;
+  if(S.step === 2){
+    var qrImage = document.getElementById("paymentQr");
+    var qrStatus = document.getElementById("qrStatus");
+    if(qrImage && S.orderId){
+      qrImage.onload = function(){ if(qrStatus) qrStatus.textContent = t("qrNote"); };
+      qrImage.onerror = function(){ if(qrStatus) qrStatus.textContent = "Could not load the payment QR. Try again or contact the operator."; };
+      if(paymentQrObjectUrl) URL.revokeObjectURL(paymentQrObjectUrl);
+      paymentQrObjectUrl = null;
+      window.fetch(API_BASE + "/upi-qr?order_id=" + encodeURIComponent(S.orderId), {headers:{"Accept":"image/svg+xml"}})
+        .then(function(response){ if(!response.ok) throw new Error("QR request failed"); return response.blob(); })
+        .then(function(blob){
+          if(S.step !== 2 || !qrImage.isConnected) return;
+          paymentQrObjectUrl = URL.createObjectURL(blob);
+          qrImage.src = paymentQrObjectUrl;
+        })
+        .catch(function(){ if(qrStatus) qrStatus.textContent = "Could not load the payment QR. Try again or contact the operator."; });
+    }
+  }
   var locationStatus = document.getElementById("locationStatus");
   if(locationStatus && S.locationMessage) locationStatus.textContent = t(S.locationMessage);
   setSelectedLocation(S.locationName,S.locationNameKey);

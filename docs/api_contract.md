@@ -65,7 +65,7 @@ Response:
 ```json
 { "order_id": "JS-1042", "status": "CONFIRMED", "otp": "4821", "backup_phone": null }
 ```
-- `otp` is a 4-digit string, generated server-side, stored hashed (HMAC) in the DB — never store plaintext.
+- `otp` is a 4-digit string, generated server-side, stored hashed (HMAC) in the DB, and returned only to the owning citizen. The citizen UI keeps it hidden until the driver marks the order `ARRIVED`; operators and drivers must never receive it before citizen verification.
 - Optional field in request: `"backup_phone": "9900011122"` (gatekeeper number).
 
 ## 4. GET /status/{order_id}
@@ -115,8 +115,22 @@ Response:
 { "error": "SOME_CODE", "message": "human readable" }
 ```
 
+## 8. Authentication and account history
+
+- `POST /auth/register` creates a citizen account and returns a bearer access token.
+- `POST /auth/login` accepts `{ "email": "…", "password": "…", "role": "citizen|operator|driver" }` and returns `access_token`, `token_type`, `expires_at`, and a safe `user` object.
+- `GET /auth/me` returns the signed-in user. `POST /auth/logout` revokes the current token.
+- `GET /auth/history` returns that account’s stored orders and status events (maximum 100, newest first).
+- Operator and driver accounts cannot self-register. An administrator provisions them through `POST /auth/admin/users` with the `X-Admin-Token` header and an `operator_id` from the seed data.
+- The protected administrator panel is available from the login screen. `GET /auth/admin/users` lists safe staff account details; `PUT /auth/admin/users/{user_id}/password` sets a new password and revokes that account’s existing sessions. Passwords are never returned by the API.
+- `GET /operators` provides the configured operator IDs and display names for account assignment.
+- Send protected requests with `Authorization: Bearer <access_token>`. Only citizens can create and confirm orders. Status, dispatch, arrival, delivery, and citizen order QR requests enforce account role and order/operator ownership. The operator dashboard checks citizen-created orders and dispatches them; it does not create or confirm orders. `/search` and `/operators/scores` remain public.
+- Passwords are salted PBKDF2 hashes; only a hash of each random session token is stored. Sessions expire after 12 hours by default and logout revokes them.
+- Existing anonymous orders are migrated and retained, but cannot be assigned to a citizen retroactively because the legacy database has no citizen identity.
+
 ## Notes for both teams
 - All money values are integers (rupees), never floats.
 - All timestamps are ISO 8601 UTC strings, added server-side.
-- CORS: allow `*` for the hackathon (tighten later, not now).
-- No auth for the demo — acceptable per our risk log, flag it in the "Limits" slide.
+- CORS: `JALSETHU_CORS_ORIGINS` accepts a comma-separated allowlist; `*` remains the development default. Set the deployed frontend origin for production.
+- Existing order request and response field names remain unchanged. Auth uses headers and separate endpoints.
+- Real payments are not enabled by the demo UPI ID. Configure each operator’s verified UPI ID before accepting payments.

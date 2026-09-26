@@ -146,6 +146,38 @@ uvicorn main:app --reload --port 8000
 
 ---
 
+## Accounts and order history
+
+- Citizens create an account from the citizen dashboard. Operator and driver accounts must be provisioned by an administrator; users cannot grant themselves staff roles.
+- Open **Administrator: manage operator and driver accounts** from a dashboard login screen, then enter `JALSETHU_ADMIN_TOKEN` to list staff, create accounts, or set a new staff password. The API alternatives are `GET /auth/admin/users`, `POST /auth/admin/users`, and `PUT /auth/admin/users/{user_id}/password`, all requiring `X-Admin-Token`.
+- Staff passwords are hashed and cannot be retrieved. The administrator chooses a password at creation/reset time and must securely share it with that staff member. Password changes revoke existing sessions.
+- All dashboards have sign-in, sign-out, and account history controls. Passwords are salted PBKDF2 hashes; bearer sessions expire after 12 hours by default and are revocable.
+- Order requests keep their existing contract fields. Authenticated orders and their status transitions are saved to SQLite for later history. Legacy anonymous orders remain available to their operator but cannot be retroactively attached to a citizen account.
+
+## Deploy with Docker
+
+The container serves the API and all static dashboards on one origin, and persists the SQLite database in a named volume. Use one application instance when using SQLite.
+
+1. Create a local `.env` file (never commit it) with unique, randomly generated values:
+
+```text
+JALSETU_OTP_SECRET=<long-random-secret>
+JALSETHU_ADMIN_TOKEN=<different-long-random-secret>
+JALSETHU_CORS_ORIGINS=https://your-deployed-domain.example
+```
+
+2. Build and start:
+
+```bash
+docker compose up --build -d
+```
+
+3. Check `http://localhost:8000/health`, then open the citizen page at `http://localhost:8000/`. Operator and driver accounts can be created through `POST /auth/admin/users` using the secret header; citizens self-register in the app.
+
+The named `jalsethu-data` volume stores `/data/jalsetu.db` across container restarts. Back it up regularly. Configure the actual deployed origin in `JALSETHU_CORS_ORIGINS`; keep HTTPS enabled at the deployment edge. Real payments remain disabled until verified operator UPI IDs are configured.
+
+---
+
 ## 📁 Repository structure
 
 ```
@@ -162,6 +194,9 @@ jalsetu-lite/
 │   └── scores.html          # Operator transparency scorecard
 ├── docs/
 │   └── api_contract.md      # Frozen API contract specification
+├── Dockerfile
+├── compose.yaml
+├── .dockerignore
 ├── .gitignore
 └── README.md
 ```

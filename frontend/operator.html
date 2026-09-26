@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JalSetu-Lite | Operator</title>
+  <script src="./auth.js"></script>
   <style>
     * {
       box-sizing: border-box
@@ -501,7 +502,7 @@
   </style>
 </head>
 
-<body>
+<body data-role="operator">
   <div class="theme-switcher" role="group" aria-label="Theme selection">
     <button type="button" class="theme-option" data-theme-choice="system">
       System
@@ -547,15 +548,12 @@
       <div id="offers"></div>
     </div>
 
-    <div class="card hidden" id="confirmCard">
-      <h2>Confirm Selected Service</h2>
-      <p class="small">The backend <code>/confirm</code> API requires an existing order ID. Enter the citizen
-        request/order ID here.</p>
+    <div class="card" id="confirmCard">
+      <h2>Customer Order</h2>
+      <p class="small">Enter the order ID shown in the citizen's account. Citizens confirm their own orders; this dashboard only checks and dispatches confirmed orders.</p>
       <label for="orderId">Order ID</label>
-      <input id="orderId" type="text" placeholder="Enter the real Order ID">
-      <label for="backupPhone">Backup Phone (optional)</label>
-      <input id="backupPhone" type="text" maxlength="15" placeholder="Optional backup phone">
-      <button id="confirmBtn" onclick="confirmOrder()">CONFIRM ORDER</button>
+      <input id="orderId" type="text" placeholder="Enter the citizen's Order ID">
+      <button id="confirmBtn" onclick="confirmOrder()">CHECK ORDER STATUS</button>
       <div id="confirmStatus" class="status"></div>
 
       <div id="orderInfo" class="order-info hidden">
@@ -584,7 +582,7 @@
   </div>
 
   <script>
-    const API_BASE = "http://127.0.0.1:8000";
+    const API_BASE = window.JALSETHU_API_BASE || "http://127.0.0.1:8000";
     let selectedOffer = null;
     let confirmedOrderId = null;
     let currentOffers = [];
@@ -626,7 +624,6 @@
       }
       const btn = document.getElementById("searchBtn"); btn.disabled = true; btn.textContent = "SEARCHING...";
       document.getElementById("offers").innerHTML = "";
-      document.getElementById("confirmCard").classList.add("hidden");
       try {
         const response = await fetch(`${API_BASE}/search`, {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -656,101 +653,35 @@
     async function selectOffer(index) {
       const offer = currentOffers[index];
       if (!offer) { showStatus("searchStatus", "❌ Selected service data is unavailable. Please search again.", "error"); return }
-      const capacity = Number.parseInt(document.getElementById("capacity").value, 10);
-      const water_type = document.getElementById("waterType").value;
-      const lat = Number(document.getElementById("lat").value);
-      const lng = Number(document.getElementById("lng").value);
       selectedOffer = offer;
       document.querySelectorAll(".offer").forEach(x => x.classList.remove("selected"));
       const selected = document.getElementById(`offer-${index}`); if (selected) selected.classList.add("selected");
-      try {
-        const response = await fetch(`${API_BASE}/select`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ capacity_l: capacity, water_type, operator_id: offer.operator_id, lat, lng })
-        });
-        const data = await readResponse(response);
-        if (!response.ok) {
-          showStatus(
-            "searchStatus",
-            `❌ ${data.message || data.error || "Unable to select service."}`,
-            "error"
-          );
-          return;
-        }
-
-        // Backend created the order and returned its real Order ID
-        const createdOrderId = data.order_id;
-
-        if (!createdOrderId) {
-          showStatus(
-            "searchStatus",
-            "❌ Backend did not return an Order ID.",
-            "error"
-          );
-          return;
-        }
-
-        // Automatically put the generated Order ID into the confirm form
-        document.getElementById("orderId").value = createdOrderId;
-        document.getElementById("statusOrderId").value = createdOrderId;
-
-        document.getElementById("confirmCard").classList.remove("hidden");
-
-        showStatus(
-          "confirmStatus",
-          `✅ ${offer.name} selected. Order ID: ${createdOrderId}. Ready to confirm.`,
-          "success"
-        );
-      } catch (e) { console.error(e); showStatus("searchStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
+      showStatus("searchStatus", `✅ ${offer.name} selected. Enter the citizen's order ID below to check whether it is ready for dispatch.`, "success");
     }
 
     async function confirmOrder() {
-      if (!selectedOffer) { showStatus("confirmStatus", "Please select a service first.", "error"); return }
       const orderId = document.getElementById("orderId").value.trim();
-      const backupPhone = document.getElementById("backupPhone").value.trim();
       if (!orderId) { showStatus("confirmStatus", "❌ Enter the real Order ID.", "error"); return }
-      const btn = document.getElementById("confirmBtn"); btn.disabled = true; btn.textContent = "CONFIRMING...";
+      const btn = document.getElementById("confirmBtn"); btn.disabled = true; btn.textContent = "CHECKING...";
       try {
-        const response = await fetch(`${API_BASE}/confirm`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order_id: orderId, backup_phone: backupPhone || null })
-        });
+        const response = await fetch(`${API_BASE}/status/${encodeURIComponent(orderId)}`);
         const data = await readResponse(response);
-        if (!response.ok) { showStatus("confirmStatus", `❌ ${data.message || data.error || "Unable to confirm order."}`, "error"); return }
+        if (!response.ok) { showStatus("confirmStatus", `❌ ${data.message || data.error || "Unable to check order."}`, "error"); return }
         confirmedOrderId = data.order_id || orderId;
-        localStorage.setItem("jalsetu_order_id", confirmedOrderId);
+        document.getElementById("statusOrderId").value = confirmedOrderId;
         document.getElementById("infoOrder").textContent = confirmedOrderId;
-        document.getElementById("infoOperator").textContent = selectedOffer.operator_id || "-";
-        document.getElementById("infoStatus").textContent = data.status || "CONFIRMED";
-        if (data.otp) {
-          let otpBox = document.getElementById("otpBox");
-
-          if (!otpBox) {
-            otpBox = document.createElement("div");
-            otpBox.id = "otpBox";
-            otpBox.style.cssText =
-              "margin-top:15px;padding:15px;border-radius:10px;" +
-              "background:#ecfeff;border:2px solid #0f766e;" +
-              "text-align:center;";
-
-            document.getElementById("orderInfo").after(otpBox);
-          }
-
-          otpBox.innerHTML =
-            "<strong>Customer OTP</strong>" +
-            "<div style='font-size:30px;font-weight:bold;" +
-            "letter-spacing:8px;margin-top:8px;color:#0f766e;'>" +
-            data.otp +
-            "</div>" +
-            "<div style='font-size:13px;color:#64748b;margin-top:6px;'>" +
-            "Give this 4-digit OTP to the driver." +
-            "</div>";
-        }
+        document.getElementById("infoOperator").textContent = data.operator_id || "-";
+        document.getElementById("infoStatus").textContent = data.status || "-";
         document.getElementById("orderInfo").classList.remove("hidden");
-        document.getElementById("dispatchBtn").classList.remove("hidden");
-        showStatus("confirmStatus", "✅ Order confirmed. It is ready to be dispatched.", "success");
+        const dispatchButton = document.getElementById("dispatchBtn");
+        dispatchButton.classList.toggle("hidden", data.status !== "CONFIRMED");
+        if (data.status === "CONFIRMED") {
+          showStatus("confirmStatus", "✅ Citizen-confirmed order is ready for dispatch. The delivery OTP is only available to the citizen after driver arrival.", "success");
+        } else {
+          showStatus("confirmStatus", `ℹ️ Order status is ${data.status || "unknown"}. Dispatch becomes available after the citizen confirms.`, "warning");
+        }
       } catch (e) { console.error(e); showStatus("confirmStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
-      finally { btn.disabled = false; btn.textContent = "CONFIRM ORDER" }
+      finally { btn.disabled = false; btn.textContent = "CHECK ORDER STATUS" }
     }
 
     async function dispatchOrder() {

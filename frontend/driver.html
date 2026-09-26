@@ -3,8 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JalSetu-Lite | Driver</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JalSetu-Lite | Driver</title>
+<script src="./auth.js"></script>
   <style>
     * {
       box-sizing: border-box
@@ -424,7 +425,7 @@
   </style>
 </head>
 
-<body>
+<body data-role="driver">
   <div class="theme-switcher" role="group" aria-label="Theme selection">
     <button type="button" class="theme-option" data-theme-choice="system">
       System
@@ -467,7 +468,7 @@
     </div>
   </div>
   <script>
-    const API_BASE = "http://127.0.0.1:8000";
+    const API_BASE = window.JALSETHU_API_BASE || "http://127.0.0.1:8000";
     let currentOrderId = null;
 
     function showStatus(id, msg, type) { const el = document.getElementById(id); el.textContent = msg; el.className = "status " + type }
