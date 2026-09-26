@@ -52,8 +52,9 @@
     .ja-card button[type=submit]{width:100%;margin-top:18px}.ja-card button:disabled{opacity:.6;cursor:wait}
     .ja-link{border:0;background:transparent!important;color:#126b52!important;text-decoration:underline;cursor:pointer}
     .ja-error{min-height:22px;margin-top:10px!important;color:#b42318!important}
-    .ja-toolbar{position:relative;z-index:50;display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:8px 16px;background:#0e302d;color:#fff;font:14px system-ui,sans-serif}
-    .ja-toolbar button{padding:7px 11px;background:#218365}.ja-toolbar .ja-name{margin-right:auto}
+    .ja-toolbar{position:relative;z-index:50;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:10px;padding:8px 16px;background:#0e302d;color:#fff;font:14px system-ui,sans-serif}
+    .ja-toolbar button{flex:0 0 auto;width:auto;min-width:92px;padding:7px 11px;background:#218365}.ja-toolbar .ja-name{flex:1 1 180px;min-width:0;margin-right:auto;overflow-wrap:anywhere}
+    @media(max-width:480px){.ja-toolbar{gap:8px;padding:8px 12px}.ja-toolbar .ja-name{flex-basis:100%}.ja-toolbar button{flex:1 1 calc(50% - 8px)}}
     .ja-dialog{width:min(92vw,720px);max-height:80vh;border:0;border-radius:16px;padding:22px;color:#12303b}
     .ja-dialog::backdrop{background:#0008}.ja-order{padding:12px 0;border-bottom:1px solid #d9e4e1}.ja-events{color:#526b72;font-size:13px}
     .ja-admin-card{width:min(100%,760px);max-height:90vh;overflow:auto}.ja-admin-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;align-items:end}.ja-admin-form label{margin:0}.ja-admin-form button{grid-column:1/-1}.ja-staff-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 0;border-bottom:1px solid #d9e4e1}.ja-staff-row p{margin:0!important;overflow-wrap:anywhere}.ja-reset-form{display:flex;flex:1;min-width:240px;align-items:center;gap:8px;flex-wrap:wrap}.ja-reset-form input{box-sizing:border-box;min-width:180px;flex:1;padding:10px;border:1px solid #bdd0d0;border-radius:8px;font:inherit}.ja-reset-status{flex-basis:100%;margin:0!important;color:#126b52}.ja-admin-note{padding:12px;background:#edf7f3;border-radius:8px;overflow-wrap:anywhere}.ja-admin-actions{display:flex;gap:8px;flex-wrap:wrap}.ja-admin-actions button{margin-top:10px}

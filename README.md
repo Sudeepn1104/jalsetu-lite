@@ -27,8 +27,8 @@ In rapidly growing urban and suburban regions, water tanker delivery is heavily 
   Deliveries require a server-side HMAC 4-digit OTP and a **95% meter volume validation check**: `((meter_after - meter_before) >= 0.95 * capacity_l)`.
 3. **Automatic dispute lock**  
   Three incorrect OTP attempts or a volume deficit automatically lock the transaction in the `DISPUTED` state.
-4. **Zero-escrow UPI payments**  
-  Direct peer-to-operator settlement uses dynamic UPI QR codes after successful delivery verification.
+4. **Operator-directed UPI payment request**
+  For a confirmed order, the API generates a fixed-amount UPI deep-link QR addressed to that operator and tagged with the order reference. Configure a verified payee VPA for each operator before using this flow. JalSetu Lite does not receive payment-provider callbacks, verify settlement, or hold funds, so users must verify payment in their UPI app and the UI never marks a transfer as paid.
 
 ---
 
@@ -52,7 +52,7 @@ In rapidly growing urban and suburban regions, water tanker delivery is heavily 
 ## 🛠️ Tech stack
 
 - **Backend:** Python 3.12, FastAPI, Uvicorn, Pydantic, SQLite (WAL mode)
-- **Frontend:** HTML5, Tailwind CSS, Vanilla JavaScript, Leaflet.js, and OpenStreetMap (Wikimedia tiles)
+- **Frontend:** HTML, CSS, and JavaScript dashboards, a Next.js scorecard app, and Leaflet with OpenStreetMap tiles
 - **Security and validation:** HMAC-SHA256 salted OTP hashing and Haversine geospatial distance calculation
 
 ---
@@ -122,9 +122,20 @@ Open the citizen portal at `http://localhost:5500/citizen.html`. The other dashb
 
 - Operator dashboard: `http://localhost:5500/operator.html`
 - Driver dashboard: `http://localhost:5500/driver.html`
-- Transparency scorecard: `http://localhost:5500/scores.html`
+- Transparency scorecard: `http://localhost:5500/score/public/scores.html`
 
 The frontend is configured to call the backend at `http://localhost:8000`. Start the backend before using the portals.
+
+### Run the API workflow checks
+
+The HTTP-level regression suite uses a temporary SQLite database and starts its own local API process. It does not modify the development database:
+
+```powershell
+cd backend
+py -m unittest discover -s tests -v
+```
+
+On macOS or Linux, use `python3 -m unittest discover -s tests -v` from `backend`.
 
 ### Optional: Configure the OTP secret
 
@@ -143,6 +154,26 @@ uvicorn main:app --reload --port 8000
 export JALSETU_OTP_SECRET="replace-with-a-long-random-secret"
 uvicorn main:app --reload --port 8000
 ```
+
+### Configure operator UPI payment IDs
+
+Set each operator's verified VPA in the backend environment using its operator ID. For example:
+
+**Windows PowerShell**
+
+```powershell
+$env:JALSETHU_UPI_ID_A = "verified-vpa@bank"
+uvicorn main:app --reload --port 8000
+```
+
+**macOS/Linux**
+
+```bash
+export JALSETHU_UPI_ID_A="verified-vpa@bank"
+uvicorn main:app --reload --port 8000
+```
+
+Use `JALSETHU_UPI_ID_P`, `JALSETHU_UPI_ID_B`, and so on for the other operator IDs. Obtain and verify these IDs with each real operator; do not use sample IDs. If an ID is missing or invalid, the API withholds that operator's payment QR. The payer must confirm the payee and amount in their UPI app; this prototype cannot confirm settlement automatically.
 
 ---
 
@@ -174,7 +205,7 @@ docker compose up --build -d
 
 3. Check `http://localhost:8000/health`, then open the citizen page at `http://localhost:8000/`. Operator and driver accounts can be created through `POST /auth/admin/users` using the secret header; citizens self-register in the app.
 
-The named `jalsethu-data` volume stores `/data/jalsetu.db` across container restarts. Back it up regularly. Configure the actual deployed origin in `JALSETHU_CORS_ORIGINS`; keep HTTPS enabled at the deployment edge. Real payments remain disabled until verified operator UPI IDs are configured.
+The named `jalsethu-data` volume stores `/data/jalsetu.db` across container restarts. Back it up regularly. Configure the actual deployed origin in `JALSETHU_CORS_ORIGINS`; keep HTTPS enabled at the deployment edge. Set verified `JALSETHU_UPI_ID_<operator-id>` values for each payee in the deployment environment. A QR is a payment request only: integrate a payment provider and verify its signed settlement callbacks before representing a payment as confirmed.
 
 ---
 
@@ -184,6 +215,7 @@ The named `jalsethu-data` volume stores `/data/jalsetu.db` across container rest
 jalsetu-lite/
 ├── backend/
 │   ├── main.py              # FastAPI endpoints & Beckn state machine
+│   ├── tests/               # Isolated API workflow regression checks
 │   ├── seed/
 │   │   └── operators.json   # Seed operator data (BWSSB & local private)
 │   └── requirements.txt     # Python dependencies

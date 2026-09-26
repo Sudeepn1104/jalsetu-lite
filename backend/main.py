@@ -154,8 +154,10 @@ class AdminPasswordResetRequest(APIModel):
 
 @contextmanager
 def get_connection():
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB_PATH, timeout=10)
     connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 10000")
     try:
         yield connection
         connection.commit()
@@ -169,6 +171,7 @@ def get_connection():
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as connection:
+        connection.execute("PRAGMA journal_mode = WAL")
         existing_orders = connection.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'orders'"
         ).fetchone()
@@ -296,12 +299,6 @@ def init_db():
             )
             """
         )
-    
-    # Insert helper to set timestamps
-    def now_iso():
-        return datetime.now(timezone.utc).isoformat()
-
-
 init_db()
 
 
@@ -408,14 +405,22 @@ def can_view_order(user: dict, order: dict) -> bool:
     return False
 
 
-def update_order(order_id: str, **fields) -> bool:
+def update_order(order_id: str, *, expected_status: str | None = None, **fields) -> bool:
     assignments = ", ".join(f"{field} = ?" for field in fields)
     values = [*fields.values(), order_id]
+    where = "order_id = ?"
+    if expected_status is not None:
+        where += " AND status = ?"
+        values.append(expected_status)
     with get_connection() as connection:
         previous = connection.execute("SELECT status FROM orders WHERE order_id = ?", (order_id,)).fetchone()
         if previous is None:
             return False
-        cursor = connection.execute(f"UPDATE orders SET {assignments} WHERE order_id = ?", values)
+        if expected_status is not None and previous["status"] != expected_status:
+            return False
+        cursor = connection.execute(f"UPDATE orders SET {assignments} WHERE {where}", values)
+        if cursor.rowcount != 1:
+            return False
         next_status = fields.get("status")
         if next_status and next_status != previous["status"]:
             connection.execute(
@@ -423,6 +428,33 @@ def update_order(order_id: str, **fields) -> bool:
                 (order_id, previous["status"], next_status, datetime.now(timezone.utc).isoformat()),
             )
     return cursor.rowcount == 1
+
+
+def record_wrong_otp(order_id: str) -> tuple[int, str] | None:
+    """Atomically count a failed OTP and dispute the order on the third try."""
+    with get_connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            "SELECT status, otp_attempts FROM orders WHERE order_id = ?", (order_id,)
+        ).fetchone()
+        if row is None or row["status"] != "ARRIVED":
+            return None
+
+        attempts = row["otp_attempts"] + 1
+        next_status = "DISPUTED" if attempts >= 3 else "ARRIVED"
+        cursor = connection.execute(
+            "UPDATE orders SET otp_attempts = ?, status = ? "
+            "WHERE order_id = ? AND status = 'ARRIVED' AND otp_attempts = ?",
+            (attempts, next_status, order_id, row["otp_attempts"]),
+        )
+        if cursor.rowcount != 1:
+            return None
+        if next_status != row["status"]:
+            connection.execute(
+                "INSERT INTO order_events (order_id, from_status, to_status, at) VALUES (?, ?, ?, ?)",
+                (order_id, row["status"], next_status, datetime.now(timezone.utc).isoformat()),
+            )
+    return attempts, next_status
 
 
 def api_error(status_code: int, code: str, message: str) -> HTTPException:
@@ -840,12 +872,14 @@ def confirm(request: ConfirmRequest, authorization: str | None = Header(default=
     if order["status"] != "OFFERED":
         raise api_error(409, "INVALID_STATE", "Only offered orders can be confirmed")
     otp = f"{secrets.randbelow(10000):04d}"
-    update_order(
+    if not update_order(
         request.order_id,
+        expected_status="OFFERED",
         status="CONFIRMED",
         otp_hash=otp_digest(order["order_id"], otp),
         backup_phone=request.backup_phone,
-    )
+    ):
+        raise api_error(409, "INVALID_STATE", "This order changed; refresh before confirming")
     return ConfirmResponse(
         order_id=order["order_id"],
         status="CONFIRMED",
@@ -876,15 +910,32 @@ def get_upi_qr(order_id: str, authorization: str | None = Header(default=None)):
     if order["status"] != "CONFIRMED":
         raise api_error(409, "INVALID_STATE", "Payment QR is available only for confirmed orders")
     operator = OPERATORS[order["operator_id"]]
-    vpa = operator.get("upi_id") or os.environ.get("JALSETHU_DEMO_UPI_ID", "demo@upi")
-    payment_uri = "upi://pay?" + urlencode({
+    vpa = (operator.get("upi_id") or os.environ.get(f"JALSETHU_UPI_ID_{order['operator_id']}", "")).strip()
+    if not re.fullmatch(r"[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}", vpa):
+        raise api_error(
+            409,
+            "PAYMENT_NOT_CONFIGURED",
+            "This operator has not configured a verified UPI ID. Contact the operator to arrange payment.",
+        )
+    payment_uri = build_upi_payment_uri(
+        vpa=vpa,
+        payee_name=operator["name"],
+        amount=order["price"],
+        order_id=order_id,
+    )
+    return render_upi_qr(payment_uri)
+
+
+def build_upi_payment_uri(*, vpa: str, payee_name: str, amount: int, order_id: str) -> str:
+    """Create the fixed-amount UPI deep link encoded into the citizen QR."""
+    return "upi://pay?" + urlencode({
         "pa": vpa,
-        "pn": operator["name"],
-        "am": f"{order['price']:.2f}",
+        "pn": payee_name,
+        "tr": order_id,
+        "am": f"{amount:.2f}",
         "cu": "INR",
         "tn": f"JalSetu order {order_id}",
     })
-    return render_upi_qr(payment_uri)
 
 
 def render_upi_qr(payment_uri: str):
@@ -934,7 +985,13 @@ def driver_arrive(order_id: str, authorization: str | None = Header(default=None
         raise api_error(403, "ORDER_FORBIDDEN", "This order is not assigned to your account")
     if order["status"] != "DISPATCHED":
         raise api_error(409, "INVALID_STATE", "Order must be DISPATCHED before arrival")
-    update_order(order_id, status="ARRIVED", driver_user_id=user["id"])
+    if not update_order(
+        order_id,
+        expected_status="DISPATCHED",
+        status="ARRIVED",
+        driver_user_id=user["id"],
+    ):
+        raise api_error(409, "INVALID_STATE", "This order changed; refresh before marking arrival")
     return {"status": "ARRIVED"}
 
 
@@ -950,21 +1007,38 @@ def driver_deliver(order_id: str, request: DeliveryRequest, authorization: str |
     if order["status"] != "ARRIVED":
         raise api_error(409, "INVALID_STATE", "Order must be ARRIVED before delivery")
     if not hmac.compare_digest(otp_digest(order_id, request.otp), order["otp_hash"]):
-        attempts = order["otp_attempts"] + 1
-        attempts_left = 3 - attempts
-        if attempts_left <= 0:
-            update_order(order_id, otp_attempts=attempts, status="DISPUTED")
+        failed_attempt = record_wrong_otp(order_id)
+        if failed_attempt is None:
+            raise api_error(409, "INVALID_STATE", "This order changed; refresh before retrying delivery")
+        attempts, current_status = failed_attempt
+        if current_status == "DISPUTED":
             raise HTTPException(409, {"error": "OTP_LOCKED", "status": "DISPUTED"})
-        update_order(order_id, otp_attempts=attempts)
+        attempts_left = 3 - attempts
         raise HTTPException(422, {"error": "WRONG_OTP", "attempts_left": attempts_left})
     litres_delivered = request.meter_after - request.meter_before
     if litres_delivered < 0.95 * order["capacity_l"]:
-        update_order(order_id, status="DISPUTED")
+        if not update_order(
+            order_id,
+            expected_status="ARRIVED",
+            status="DISPUTED",
+            meter_before=request.meter_before,
+            meter_after=request.meter_after,
+            litres_delivered=litres_delivered,
+        ):
+            raise api_error(409, "INVALID_STATE", "This order changed; refresh before retrying delivery")
         raise HTTPException(
             409,
             {"error": "VOLUME_MISMATCH", "status": "DISPUTED", "litres_delivered": litres_delivered},
         )
-    update_order(order_id, status="DELIVERED")
+    if not update_order(
+        order_id,
+        expected_status="ARRIVED",
+        status="DELIVERED",
+        meter_before=request.meter_before,
+        meter_after=request.meter_after,
+        litres_delivered=litres_delivered,
+    ):
+        raise api_error(409, "INVALID_STATE", "This order changed; refresh before retrying delivery")
     return {"status": "DELIVERED", "litres_delivered": litres_delivered}
 
 
@@ -1005,7 +1079,13 @@ def operator_dispatch(order_id: str, authorization: str | None = Header(default=
         raise api_error(403, "ORDER_FORBIDDEN", "This order is not assigned to your operator account")
     if order["status"] != "CONFIRMED":
         raise api_error(409, "INVALID_STATE", "Only confirmed orders can be dispatched")
-    update_order(order_id, status="DISPATCHED", operator_user_id=user["id"])
+    if not update_order(
+        order_id,
+        expected_status="CONFIRMED",
+        status="DISPATCHED",
+        operator_user_id=user["id"],
+    ):
+        raise api_error(409, "INVALID_STATE", "This order changed; refresh before dispatching")
     return {"order_id": order_id, "status": "DISPATCHED"}
 
 

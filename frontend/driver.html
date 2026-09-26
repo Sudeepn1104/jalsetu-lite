@@ -121,6 +121,11 @@
       margin-bottom: 15px
     }
 
+    .secondary-action {
+      margin-top: 10px;
+      background: #475569;
+    }
+
     /* =========================================================
    THEME SYSTEM
    ========================================================= */
@@ -346,10 +351,10 @@
    ========================================================= */
 
     .theme-switcher {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 9999;
+      position: relative;
+      z-index: 1;
+      width: max-content;
+      margin: 12px 12px 0 auto;
 
       display: inline-flex;
       align-items: center;
@@ -408,8 +413,7 @@
     /* Small screens */
     @media (max-width: 480px) {
       .theme-switcher {
-        top: 8px;
-        left: 8px;
+        margin: 8px 8px 0 auto;
       }
 
       .theme-option {
@@ -418,9 +422,6 @@
         font-size: 11px;
       }
 
-      .header {
-        padding-top: 44px;
-      }
     }
   </style>
 </head>
@@ -446,11 +447,11 @@
     </div>
     <div class="card">
       <label for="order_id">Order ID</label>
-      <input type="text" id="order_id" placeholder="Enter Order ID">
-      <button id="arrivalBtn" onclick="markArrival()">MARK ARRIVAL</button>
-      <button id="statusBtn" onclick="checkOrderStatus(true)" style="margin-top:10px;background:#475569;">CHECK ORDER
-        STATUS</button>
-      <div id="arrivalStatus" class="status"></div>
+      <input type="text" id="order_id" placeholder="Enter Order ID" autocomplete="off" autocapitalize="characters">
+      <button id="arrivalBtn" type="button" onclick="markArrival()" style="display:none">MARK ARRIVAL</button>
+      <button id="statusBtn" class="secondary-action" type="button" onclick="checkOrderStatus(true)">CHECK ORDER STATUS</button>
+      <button id="nextOrderBtn" class="secondary-action" type="button" onclick="startNextOrder()" style="display:none">CHECK ANOTHER ORDER</button>
+      <div id="arrivalStatus" class="status" role="status" aria-live="polite"></div>
     </div>
 
     <div id="deliverySection" class="card delivery-section">
@@ -464,7 +465,7 @@
       <label for="meter_after">Final Meter Reading</label>
       <input type="number" id="meter_after" placeholder="Enter final reading" min="0" step="1">
       <button id="deliverBtn" onclick="completeDelivery()">DELIVER WATER</button>
-      <div id="deliveryStatus" class="status"></div>
+      <div id="deliveryStatus" class="status" role="status" aria-live="polite"></div>
     </div>
   </div>
   <script>
@@ -474,13 +475,67 @@
     function showStatus(id, msg, type) { const el = document.getElementById(id); el.textContent = msg; el.className = "status " + type }
     async function readResponse(response) { const text = await response.text(); if (!text) return {}; try { return JSON.parse(text) } catch { return { message: text } } }
 
-    window.addEventListener("DOMContentLoaded", async () => {
+    function startNextOrder() {
+      currentOrderId = null;
+      localStorage.removeItem("jalsetu_order_id");
+      const orderInput = document.getElementById("order_id");
+      orderInput.value = "";
+      document.getElementById("arrivalBtn").style.display = "none";
+      const statusButton = document.getElementById("statusBtn");
+      statusButton.style.display = "block";
+      statusButton.disabled = false;
+      statusButton.textContent = "CHECK ORDER STATUS";
+      document.getElementById("nextOrderBtn").style.display = "none";
+      document.getElementById("deliverySection").style.display = "none";
+      document.getElementById("arrivalStatus").textContent = "";
+      document.getElementById("arrivalStatus").className = "status";
+      document.getElementById("deliveryStatus").textContent = "";
+      document.getElementById("deliveryStatus").className = "status";
+      document.getElementById("otp").value = "";
+      document.getElementById("meter_before").value = "";
+      document.getElementById("meter_after").value = "";
+      const deliverButton = document.getElementById("deliverBtn");
+      deliverButton.disabled = false;
+      deliverButton.textContent = "DELIVER WATER";
+      orderInput.focus();
+    }
+
+    function handleOrderIdChange() {
+      const orderId = document.getElementById("order_id").value.trim();
+      if (orderId === currentOrderId) return;
+      currentOrderId = null;
+      localStorage.removeItem("jalsetu_order_id");
+      document.getElementById("arrivalBtn").style.display = "none";
+      document.getElementById("statusBtn").style.display = "block";
+      document.getElementById("statusBtn").textContent = "CHECK ORDER STATUS";
+      document.getElementById("nextOrderBtn").style.display = "none";
+      document.getElementById("deliverySection").style.display = "none";
+      document.getElementById("arrivalStatus").textContent = "";
+      document.getElementById("arrivalStatus").className = "status";
+      document.getElementById("deliveryStatus").textContent = "";
+      document.getElementById("deliveryStatus").className = "status";
+      document.getElementById("otp").value = "";
+      document.getElementById("meter_before").value = "";
+      document.getElementById("meter_after").value = "";
+      const deliverButton = document.getElementById("deliverBtn");
+      deliverButton.disabled = false;
+      deliverButton.textContent = "DELIVER WATER";
+    }
+
+    async function resumeSavedOrder() {
+      if (document.getElementById("statusBtn").disabled) return;
       const saved = localStorage.getItem("jalsetu_order_id");
       if (saved) {
         document.getElementById("order_id").value = saved;
         await checkOrderStatus(false);
       }
+    }
+
+    document.getElementById("order_id").addEventListener("input", handleOrderIdChange);
+    window.addEventListener("DOMContentLoaded", () => {
+      if (window.JALSETHU_AUTH && window.JALSETHU_AUTH.user) resumeSavedOrder();
     });
+    window.addEventListener("jalsetu:authenticated", resumeSavedOrder);
 
     async function checkOrderStatus(showErrors = true) {
       const orderId = document.getElementById("order_id").value.trim();
@@ -489,6 +544,9 @@
         return null;
       }
 
+      const statusButton = document.getElementById("statusBtn");
+      statusButton.disabled = true;
+      statusButton.textContent = "CHECKING...";
       try {
         const response = await fetch(`${API_BASE}/status/${encodeURIComponent(orderId)}`, {
           method: "GET",
@@ -501,26 +559,30 @@
           return null;
         }
 
+        if (document.getElementById("order_id").value.trim() !== orderId) return null;
         currentOrderId = orderId;
-        localStorage.setItem("jalsetu_order_id", orderId);
 
         const status = String(data.status || "").toUpperCase();
+        const arrivalButton = document.getElementById("arrivalBtn");
+        const deliverySection = document.getElementById("deliverySection");
+        const nextOrderButton = document.getElementById("nextOrderBtn");
+        arrivalButton.style.display = status === "DISPATCHED" ? "block" : "none";
+        deliverySection.style.display = status === "ARRIVED" ? "block" : "none";
+        nextOrderButton.style.display = status === "DELIVERED" ? "block" : "none";
+        statusButton.style.display = "block";
+        statusButton.textContent = "CHECK ORDER STATUS";
 
         if (status === "ARRIVED") {
           showStatus("arrivalStatus", "✅ Driver already arrived. Complete the delivery below.", "success");
-          document.getElementById("deliverySection").style.display = "block";
-          document.getElementById("arrivalBtn").style.display = "none";
-          document.getElementById("statusBtn").style.display = "none";
+          localStorage.setItem("jalsetu_order_id", orderId);
         } else if (status === "DELIVERED") {
-          showStatus("arrivalStatus", "✅ This order has already been delivered.", "success");
-          document.getElementById("deliverySection").style.display = "none";
-          document.getElementById("arrivalBtn").style.display = "none";
-          document.getElementById("statusBtn").style.display = "none";
+          showStatus("arrivalStatus", "✅ This order has already been delivered. Check another order to continue.", "success");
+          localStorage.removeItem("jalsetu_order_id");
         } else if (status === "DISPATCHED") {
-          document.getElementById("arrivalBtn").style.display = "block";
+          localStorage.setItem("jalsetu_order_id", orderId);
           if (showErrors) showStatus("arrivalStatus", "📦 Order is dispatched. You can mark arrival.", "success");
         } else {
-          document.getElementById("arrivalBtn").style.display = "block";
+          localStorage.setItem("jalsetu_order_id", orderId);
           if (showErrors) showStatus("arrivalStatus", `ℹ️ Current order status: ${status || "UNKNOWN"}.`, "warning");
         }
 
@@ -529,6 +591,9 @@
         console.error(e);
         if (showErrors) showStatus("arrivalStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error");
         return null;
+      } finally {
+        statusButton.disabled = false;
+        statusButton.textContent = "CHECK ORDER STATUS";
       }
     }
 
@@ -612,6 +677,10 @@
         if (response.ok) {
           const litres = data.litres_delivered;
           showStatus("deliveryStatus", `✅ Delivery completed successfully!${litres != null ? " " + litres + " L delivered." : ""}`, "success");
+          showStatus("arrivalStatus", "✅ Delivery complete. You can now check another order.", "success");
+          localStorage.removeItem("jalsetu_order_id");
+          document.getElementById("arrivalBtn").style.display = "none";
+          document.getElementById("nextOrderBtn").style.display = "block";
           button.textContent = "DELIVERY COMPLETED";
           button.disabled = true;
           return;
