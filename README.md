@@ -223,6 +223,8 @@ docker compose cp jalsethu:/data/backups ./backups
 
 Copy backups off the deployment host as well; a backup in the same Docker volume does not protect against volume or host loss. For a local backend, run `python backup_db.py --destination ../backups` from `backend`.
 
+On startup, JalSetu upgrades older order-event tables in a transaction, adds a foreign key to their order, and archives any already-orphaned events in `order_event_orphans` instead of discarding them. The migration is repeat-safe.
+
 To restore in Docker, first copy the selected verified backup into `/data/backups`, then stop the service and restore through a one-off container:
 
 ```bash

@@ -205,6 +205,83 @@ def get_connection():
         connection.close()
 
 
+def migrate_order_event_integrity(connection: sqlite3.Connection) -> None:
+    foreign_keys = connection.execute("PRAGMA foreign_key_list(order_events)").fetchall()
+    has_expected_foreign_key = any(
+        row["table"] == "orders"
+        and row["from"] == "order_id"
+        and row["to"] == "order_id"
+        and row["on_delete"].upper() == "CASCADE"
+        for row in foreign_keys
+    )
+    if has_expected_foreign_key:
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_order_events_order ON order_events(order_id)")
+        return
+
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS order_event_orphans (
+                original_event_id INTEGER PRIMARY KEY,
+                order_id TEXT NOT NULL,
+                from_status TEXT,
+                to_status TEXT NOT NULL,
+                at TEXT NOT NULL,
+                quarantined_at TEXT NOT NULL,
+                reason TEXT NOT NULL
+            )
+            """
+        )
+        quarantined_at = datetime.now(timezone.utc).isoformat()
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO order_event_orphans (
+                original_event_id, order_id, from_status, to_status, at, quarantined_at, reason
+            )
+            SELECT events.id, events.order_id, events.from_status, events.to_status, events.at, ?,
+                   'No matching order existed when the event-log foreign key was added'
+            FROM order_events AS events
+            WHERE NOT EXISTS (
+                SELECT 1 FROM orders WHERE orders.order_id = events.order_id
+            )
+            """,
+            (quarantined_at,),
+        )
+        connection.execute(
+            """
+            CREATE TABLE order_events_migrated (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+                from_status TEXT,
+                to_status TEXT NOT NULL,
+                at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO order_events_migrated (id, order_id, from_status, to_status, at)
+            SELECT events.id, events.order_id, events.from_status, events.to_status, events.at
+            FROM order_events AS events
+            WHERE EXISTS (
+                SELECT 1 FROM orders WHERE orders.order_id = events.order_id
+            )
+            ORDER BY events.id
+            """
+        )
+        connection.execute("DROP TABLE order_events")
+        connection.execute("ALTER TABLE order_events_migrated RENAME TO order_events")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_order_events_order ON order_events(order_id)")
+        violations = connection.execute("PRAGMA foreign_key_check(order_events)").fetchall()
+        if violations:
+            raise sqlite3.IntegrityError("Order event foreign-key migration left invalid references")
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+
+
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as connection:
@@ -336,6 +413,10 @@ def init_db():
             )
             """
         )
+    with get_connection() as connection:
+        migrate_order_event_integrity(connection)
+
+
 init_db()
 
 
