@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JalSetu-Lite | Operator</title>
+  <style>
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      margin: auto;
+      padding: 20px
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #0f766e
+    }
+
+    .header p {
+      margin-top: 6px;
+      color: #64748b
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, .08);
+      margin-bottom: 16px
+    }
+
+    h2 {
+      margin-top: 0
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: bold
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 15px
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: 0;
+      border-radius: 10px;
+      background: #0f766e;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer
+    }
+
+    button:hover {
+      opacity: .92
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed
+    }
+
+    .secondary {
+      background: #475569
+    }
+
+    .dispatch {
+      background: #2563eb
+    }
+
+    .status {
+      display: none;
+      padding: 12px;
+      border-radius: 10px;
+      margin-top: 15px;
+      font-weight: bold
+    }
+
+    .success {
+      display: block;
+      background: #dcfce7;
+      color: #166534
+    }
+
+    .error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b
+    }
+
+    .info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af
+    }
+
+    .warning {
+      display: block;
+      background: #fef3c7;
+      color: #92400e
+    }
+
+    .hidden {
+      display: none
+    }
+
+    .hint,
+    .small {
+      font-size: 13px;
+      color: #64748b
+    }
+
+    .hint {
+      margin-top: -7px;
+      margin-bottom: 15px
+    }
+
+    .offer {
+      border: 1px solid #dbe4ee;
+      border-radius: 12px;
+      padding: 15px;
+      margin: 12px 0;
+      background: #f8fafc
+    }
+
+    .offer.selected {
+      border: 2px solid #0f766e;
+      background: #ecfeff
+    }
+
+    .offer-title {
+      font-size: 18px;
+      font-weight: 800
+    }
+
+    .offer-meta {
+      font-size: 14px;
+      color: #475569;
+      margin: 6px 0 12px
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px
+    }
+
+    .order-info {
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 10px;
+      margin-top: 12px
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 7px 0
+    }
+
+    .label {
+      font-weight: bold
+    }
+
+    @media(max-width:520px) {
+      .grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    /* =========================================================
+   THEME SYSTEM
+   ========================================================= */
+
+    :root {
+      color-scheme: light;
+
+      --bg-color: #f4f7fb;
+      --text-color: #1f2937;
+      --muted-color: #64748b;
+
+      --card-bg: #ffffff;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+
+      --primary-color: #0f766e;
+      --secondary-color: #475569;
+
+      --switcher-bg: rgba(255, 255, 255, 0.95);
+      --switcher-border: #d1d5db;
+      --switcher-text: #475569;
+      --switcher-active-bg: #0f766e;
+      --switcher-active-text: #ffffff;
+
+      --shadow-color: rgba(0, 0, 0, 0.08);
+
+      --success-bg: #dcfce7;
+      --success-text: #166534;
+
+      --error-bg: #fee2e2;
+      --error-text: #991b1b;
+
+      --warning-bg: #fef3c7;
+      --warning-text: #92400e;
+
+      --info-bg: #dbeafe;
+      --info-text: #1e40af;
+    }
+
+    /* System dark mode */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+
+        --bg-color: #0f172a;
+        --text-color: #e5e7eb;
+        --muted-color: #94a3b8;
+
+        --card-bg: #1e293b;
+        --input-bg: #0f172a;
+        --input-border: #475569;
+
+        --primary-color: #14b8a6;
+        --secondary-color: #64748b;
+
+        --switcher-bg: rgba(30, 41, 59, 0.96);
+        --switcher-border: #475569;
+        --switcher-text: #cbd5e1;
+        --switcher-active-bg: #14b8a6;
+        --switcher-active-text: #042f2e;
+
+        --shadow-color: rgba(0, 0, 0, 0.35);
+
+        --success-bg: #14532d;
+        --success-text: #bbf7d0;
+
+        --error-bg: #7f1d1d;
+        --error-text: #fecaca;
+
+        --warning-bg: #78350f;
+        --warning-text: #fde68a;
+
+        --info-bg: #1e3a8a;
+        --info-text: #bfdbfe;
+      }
+    }
+
+    /* Force light */
+    html[data-theme="light"] {
+      color-scheme: light;
+
+      --bg-color: #f4f7fb;
+      --text-color: #1f2937;
+      --muted-color: #64748b;
+
+      --card-bg: #ffffff;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+
+      --primary-color: #0f766e;
+      --secondary-color: #475569;
+
+      --switcher-bg: rgba(255, 255, 255, 0.95);
+      --switcher-border: #d1d5db;
+      --switcher-text: #475569;
+      --switcher-active-bg: #0f766e;
+      --switcher-active-text: #ffffff;
+
+      --shadow-color: rgba(0, 0, 0, 0.08);
+
+      --success-bg: #dcfce7;
+      --success-text: #166534;
+
+      --error-bg: #fee2e2;
+      --error-text: #991b1b;
+
+      --warning-bg: #fef3c7;
+      --warning-text: #92400e;
+
+      --info-bg: #dbeafe;
+      --info-text: #1e40af;
+    }
+
+    /* Force dark */
+    html[data-theme="dark"] {
+      color-scheme: dark;
+
+      --bg-color: #0f172a;
+      --text-color: #e5e7eb;
+      --muted-color: #94a3b8;
+
+      --card-bg: #1e293b;
+      --input-bg: #0f172a;
+      --input-border: #475569;
+
+      --primary-color: #14b8a6;
+      --secondary-color: #64748b;
+
+      --switcher-bg: rgba(30, 41, 59, 0.96);
+      --switcher-border: #475569;
+      --switcher-text: #cbd5e1;
+      --switcher-active-bg: #14b8a6;
+      --switcher-active-text: #042f2e;
+
+      --shadow-color: rgba(0, 0, 0, 0.35);
+
+      --success-bg: #14532d;
+      --success-text: #bbf7d0;
+
+      --error-bg: #7f1d1d;
+      --error-text: #fecaca;
+
+      --warning-bg: #78350f;
+      --warning-text: #fde68a;
+
+      --info-bg: #1e3a8a;
+      --info-text: #bfdbfe;
+    }
+
+    /* Apply theme variables */
+    body {
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+    }
+
+    /* Keep the existing centered header from being covered */
+    .header {
+      padding-top: 48px;
+    }
+
+    .header p,
+    .hint,
+    .small {
+      color: var(--muted-color);
+    }
+
+    .header h1 {
+      color: var(--primary-color);
+    }
+
+    .card {
+      background: var(--card-bg);
+      box-shadow: 0 4px 15px var(--shadow-color);
+    }
+
+    input,
+    select,
+    textarea {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border-color: var(--input-border);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--muted-color);
+    }
+
+    button {
+      background: var(--primary-color);
+    }
+
+    .secondary {
+      background: var(--secondary-color);
+    }
+
+    /* Status messages */
+    .success {
+      background: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    .error {
+      background: var(--error-bg);
+      color: var(--error-text);
+    }
+
+    .warning {
+      background: var(--warning-bg);
+      color: var(--warning-text);
+    }
+
+    .info {
+      background: var(--info-bg);
+      color: var(--info-text);
+    }
+
+    /* =========================================================
+   SEGMENTED THEME SWITCHER
+   ========================================================= */
+
+    .theme-switcher {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 9999;
+
+      display: inline-flex;
+      align-items: center;
+
+      padding: 4px;
+
+      background: var(--switcher-bg);
+      border: 1px solid var(--switcher-border);
+      border-radius: 999px;
+
+      box-shadow: 0 4px 14px var(--shadow-color);
+
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .theme-option {
+      width: auto;
+      min-width: 58px;
+
+      padding: 7px 11px;
+
+      border: none;
+      border-radius: 999px;
+
+      background: transparent;
+      color: var(--switcher-text);
+
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      transition:
+        background-color 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease;
+    }
+
+    .theme-option:hover {
+      opacity: 1;
+      transform: translateY(-1px);
+    }
+
+    .theme-option.active {
+      background: var(--switcher-active-bg);
+      color: var(--switcher-active-text);
+    }
+
+    .theme-option:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    /* Small screens */
+    @media (max-width: 480px) {
+      .theme-switcher {
+        top: 8px;
+        left: 8px;
+      }
+
+      .theme-option {
+        min-width: 52px;
+        padding: 7px 8px;
+        font-size: 11px;
+      }
+
+      .header {
+        padding-top: 44px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="theme-switcher" role="group" aria-label="Theme selection">
+    <button type="button" class="theme-option" data-theme-choice="system">
+      System
+    </button>
+
+    <button type="button" class="theme-option" data-theme-choice="light">
+      Light
+    </button>
+
+    <button type="button" class="theme-option" data-theme-choice="dark">
+      Dark
+    </button>
+  </div>
+  <div class="container">
+    <div class="header">
+      <h1>JalSetu-Lite</h1>
+      <p>Operator Order Dashboard</p>
+    </div>
+
+    <div class="card">
+      <h2>Find Water Service</h2>
+      <div class="grid">
+        <div><label for="capacity">Capacity (L)</label>
+          <select id="capacity" name="capacity">
+            <option value="" disabled selected>Select Capacity</option>
+            <option value="4000">4,000 L</option>
+            <option value="5000">5,000 L</option>
+            <option value="6000">6,000 L</option>
+            <option value="12000">12,000 L</option>
+          </select>
+        </div>
+        <div><label for="waterType">Water Type</label>
+          <select id="waterType">
+            <option value="fresh">Fresh</option>
+            <option value="treated">Treated</option>
+          </select>
+        </div>
+        <div><label for="lat">Latitude</label><input id="lat" type="number" step="any" value="12.9141"></div>
+        <div><label for="lng">Longitude</label><input id="lng" type="number" step="any" value="74.8560"></div>
+      </div>
+      <button id="searchBtn" onclick="searchOffers()">SEARCH AVAILABLE SERVICES</button>
+      <div id="searchStatus" class="status"></div>
+      <div id="offers"></div>
+    </div>
+
+    <div class="card hidden" id="confirmCard">
+      <h2>Confirm Selected Service</h2>
+      <p class="small">The backend <code>/confirm</code> API requires an existing order ID. Enter the citizen
+        request/order ID here.</p>
+      <label for="orderId">Order ID</label>
+      <input id="orderId" type="text" placeholder="Enter the real Order ID">
+      <label for="backupPhone">Backup Phone (optional)</label>
+      <input id="backupPhone" type="text" maxlength="15" placeholder="Optional backup phone">
+      <button id="confirmBtn" onclick="confirmOrder()">CONFIRM ORDER</button>
+      <div id="confirmStatus" class="status"></div>
+
+      <div id="orderInfo" class="order-info hidden">
+        <div class="row"><span class="label">Order ID</span><span id="infoOrder">-</span></div>
+        <div class="row"><span class="label">Operator</span><span id="infoOperator">-</span></div>
+        <div class="row"><span class="label">Status</span><span id="infoStatus">-</span></div>
+      </div>
+      <button id="dispatchBtn" class="dispatch hidden" onclick="dispatchOrder()">DISPATCH TO DRIVER</button>
+      <div id="dispatchStatus" class="status"></div>
+    </div>
+
+    <div class="card" id="statusCard">
+      <h2>Order Status</h2>
+      <label for="statusOrderId">Order ID</label>
+      <input id="statusOrderId" type="text" placeholder="Enter Order ID">
+      <button class="secondary" onclick="checkStatus()">CHECK ORDER STATUS</button>
+      <div id="statusMessage" class="status"></div>
+      <div id="statusInfo" class="order-info hidden">
+        <div class="row"><span class="label">Order ID</span><span id="statusOrder">-</span></div>
+        <div class="row"><span class="label">Status</span><span id="statusValue">-</span></div>
+        <div class="row"><span class="label">Operator</span><span id="statusOperator">-</span></div>
+        <div class="row"><span class="label">Capacity</span><span id="statusCapacity">-</span></div>
+        <div class="row"><span class="label">Price</span><span id="statusPrice">-</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+    let selectedOffer = null;
+    let confirmedOrderId = null;
+    let currentOffers = [];
+
+    function showStatus(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg; el.className = "status " + type;
+    }
+    async function readResponse(response) {
+      const text = await response.text();
+      if (!text) return {};
+      try { return JSON.parse(text) } catch { return { message: text } }
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    async function searchOffers() {
+      const capacity = Number.parseInt(document.getElementById("capacity").value, 10);
+      const water_type = document.getElementById("waterType").value;
+      const lat = Number(document.getElementById("lat").value);
+      const lng = Number(document.getElementById("lng").value);
+      if (!Number.isInteger(capacity)) {
+        showStatus(
+          "searchStatus",
+          "❌ Please select a water capacity.",
+          "error"
+        );
+        return;
+      }
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        showStatus(
+          "searchStatus",
+          "❌ Enter valid latitude and longitude.",
+          "error"
+        );
+        return;
+      }
+      const btn = document.getElementById("searchBtn"); btn.disabled = true; btn.textContent = "SEARCHING...";
+      document.getElementById("offers").innerHTML = "";
+      document.getElementById("confirmCard").classList.add("hidden");
+      try {
+        const response = await fetch(`${API_BASE}/search`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ capacity_l: capacity, water_type, lat, lng })
+        });
+        const data = await readResponse(response);
+        if (!response.ok) { showStatus("searchStatus", `❌ ${data.message || data.error || "Search failed."}`, "error"); return }
+        const offers = Array.isArray(data.offers) ? data.offers : [];
+        currentOffers = offers;
+        if (!offers.length) { showStatus("searchStatus", "⚠️ No available services were returned.", "warning"); return }
+        showStatus("searchStatus", `✅ Found ${offers.length} available service(s). Select one below.`, "success");
+        document.getElementById("offers").innerHTML = offers.map((offer, i) => `
+   <div class="offer" id="offer-${i}">
+    <div class="offer-title">${escapeHtml(offer.name || "Unnamed Operator")}</div>
+    <div class="offer-meta">
+     Operator ID: ${escapeHtml(offer.operator_id)} · ${escapeHtml(offer.type || "")}<br>
+     ₹${escapeHtml(offer.price)} · ₹${escapeHtml(offer.price_per_1000l)} / 1000L · ETA ${escapeHtml(offer.eta_min)} min<br>
+     ${escapeHtml(offer.distance_km)} km · ⭐ ${escapeHtml(offer.rating)}
+     ${offer.flagged ? " · ⚠️ Flagged" : ""}
+    </div>
+    <button onclick="selectOffer(${i})">SELECT THIS SERVICE</button>
+   </div>`).join("");
+      } catch (e) { console.error(e); showStatus("searchStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
+      finally { btn.disabled = false; btn.textContent = "SEARCH AVAILABLE SERVICES" }
+    }
+
+    async function selectOffer(index) {
+      const offer = currentOffers[index];
+      if (!offer) { showStatus("searchStatus", "❌ Selected service data is unavailable. Please search again.", "error"); return }
+      const capacity = Number.parseInt(document.getElementById("capacity").value, 10);
+      const water_type = document.getElementById("waterType").value;
+      const lat = Number(document.getElementById("lat").value);
+      const lng = Number(document.getElementById("lng").value);
+      selectedOffer = offer;
+      document.querySelectorAll(".offer").forEach(x => x.classList.remove("selected"));
+      const selected = document.getElementById(`offer-${index}`); if (selected) selected.classList.add("selected");
+      try {
+        const response = await fetch(`${API_BASE}/select`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ capacity_l: capacity, water_type, operator_id: offer.operator_id, lat, lng })
+        });
+        const data = await readResponse(response);
+        if (!response.ok) {
+          showStatus(
+            "searchStatus",
+            `❌ ${data.message || data.error || "Unable to select service."}`,
+            "error"
+          );
+          return;
+        }
+
+        // Backend created the order and returned its real Order ID
+        const createdOrderId = data.order_id;
+
+        if (!createdOrderId) {
+          showStatus(
+            "searchStatus",
+            "❌ Backend did not return an Order ID.",
+            "error"
+          );
+          return;
+        }
+
+        // Automatically put the generated Order ID into the confirm form
+        document.getElementById("orderId").value = createdOrderId;
+        document.getElementById("statusOrderId").value = createdOrderId;
+
+        document.getElementById("confirmCard").classList.remove("hidden");
+
+        showStatus(
+          "confirmStatus",
+          `✅ ${offer.name} selected. Order ID: ${createdOrderId}. Ready to confirm.`,
+          "success"
+        );
+      } catch (e) { console.error(e); showStatus("searchStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
+    }
+
+    async function confirmOrder() {
+      if (!selectedOffer) { showStatus("confirmStatus", "Please select a service first.", "error"); return }
+      const orderId = document.getElementById("orderId").value.trim();
+      const backupPhone = document.getElementById("backupPhone").value.trim();
+      if (!orderId) { showStatus("confirmStatus", "❌ Enter the real Order ID.", "error"); return }
+      const btn = document.getElementById("confirmBtn"); btn.disabled = true; btn.textContent = "CONFIRMING...";
+      try {
+        const response = await fetch(`${API_BASE}/confirm`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId, backup_phone: backupPhone || null })
+        });
+        const data = await readResponse(response);
+        if (!response.ok) { showStatus("confirmStatus", `❌ ${data.message || data.error || "Unable to confirm order."}`, "error"); return }
+        confirmedOrderId = data.order_id || orderId;
+        localStorage.setItem("jalsetu_order_id", confirmedOrderId);
+        document.getElementById("infoOrder").textContent = confirmedOrderId;
+        document.getElementById("infoOperator").textContent = selectedOffer.operator_id || "-";
+        document.getElementById("infoStatus").textContent = data.status || "CONFIRMED";
+        if (data.otp) {
+          let otpBox = document.getElementById("otpBox");
+
+          if (!otpBox) {
+            otpBox = document.createElement("div");
+            otpBox.id = "otpBox";
+            otpBox.style.cssText =
+              "margin-top:15px;padding:15px;border-radius:10px;" +
+              "background:#ecfeff;border:2px solid #0f766e;" +
+              "text-align:center;";
+
+            document.getElementById("orderInfo").after(otpBox);
+          }
+
+          otpBox.innerHTML =
+            "<strong>Customer OTP</strong>" +
+            "<div style='font-size:30px;font-weight:bold;" +
+            "letter-spacing:8px;margin-top:8px;color:#0f766e;'>" +
+            data.otp +
+            "</div>" +
+            "<div style='font-size:13px;color:#64748b;margin-top:6px;'>" +
+            "Give this 4-digit OTP to the driver." +
+            "</div>";
+        }
+        document.getElementById("orderInfo").classList.remove("hidden");
+        document.getElementById("dispatchBtn").classList.remove("hidden");
+        showStatus("confirmStatus", "✅ Order confirmed. It is ready to be dispatched.", "success");
+      } catch (e) { console.error(e); showStatus("confirmStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
+      finally { btn.disabled = false; btn.textContent = "CONFIRM ORDER" }
+    }
+
+    async function dispatchOrder() {
+      const orderId = confirmedOrderId || document.getElementById("orderId").value.trim();
+      if (!orderId) { showStatus("dispatchStatus", "❌ No confirmed Order ID.", "error"); return }
+      const btn = document.getElementById("dispatchBtn"); btn.disabled = true; btn.textContent = "DISPATCHING...";
+      try {
+        const response = await fetch(`${API_BASE}/operator/dispatch/${encodeURIComponent(orderId)}`, { method: "POST" });
+        const data = await readResponse(response);
+        if (!response.ok) { showStatus("dispatchStatus", `❌ ${data.message || data.error || "Unable to dispatch order."}`, "error"); return }
+        showStatus("dispatchStatus", "✅ Order dispatched to the driver.", "success");
+      } catch (e) { console.error(e); showStatus("dispatchStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
+      finally { btn.disabled = false; btn.textContent = "DISPATCH TO DRIVER" }
+    }
+
+    let statusPollTimer = null;
+
+    async function checkStatus(showMessage = true) {
+      const orderId =
+        document.getElementById("statusOrderId").value.trim() ||
+        document.getElementById("orderId").value.trim();
+
+      if (!orderId) {
+        if (showMessage) {
+          showStatus("statusMessage", "❌ Enter an Order ID first.", "error");
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/status/${encodeURIComponent(orderId)}`
+        );
+
+        const data = await readResponse(response);
+
+        if (!response.ok) {
+          if (showMessage) {
+            showStatus(
+              "statusMessage",
+              `❌ ${data.message || data.error || "Order not found."}`,
+              "error"
+            );
+          }
+          return;
+        }
+
+        document.getElementById("statusCard").classList.remove("hidden");
+
+        document.getElementById("statusOrder").textContent =
+          data.order_id || orderId;
+
+        document.getElementById("statusValue").textContent =
+          data.status || "-";
+
+        document.getElementById("statusOperator").textContent =
+          data.operator_id || "-";
+
+        document.getElementById("statusCapacity").textContent =
+          data.capacity_l ?? "-";
+
+        document.getElementById("statusPrice").textContent =
+          data.price ?? "-";
+
+        if (showMessage) {
+          showStatus(
+            "statusMessage",
+            "✅ Order status loaded.",
+            "info"
+          );
+        }
+
+        // Stop automatic checking after delivery is completed
+        if (data.status === "DELIVERED") {
+          if (statusPollTimer) {
+            clearInterval(statusPollTimer);
+            statusPollTimer = null;
+          }
+
+          showStatus(
+            "statusMessage",
+            "✅ Water delivered successfully. Order is DELIVERED.",
+            "success"
+          );
+        }
+
+      } catch (e) {
+        console.error(e);
+
+        if (showMessage) {
+          showStatus(
+            "statusMessage",
+            "❌ Cannot connect to the JalSetu-Lite server.",
+            "error"
+          );
+        }
+      }
+    }
+    // Automatic order-status checking every 5 seconds
+    statusPollTimer = setInterval(() => {
+      const orderId =
+        document.getElementById("statusOrderId").value.trim() ||
+        document.getElementById("orderId").value.trim();
+
+      if (orderId) {
+        checkStatus(false);
+      }
+    }, 5000);
+    /* =========================================================
+     THEME SWITCHER
+     ========================================================= */
+
+    const THEME_STORAGE_KEY = "jalsetu-theme";
+
+    function getSavedTheme() {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+
+      if (
+        saved === "system" ||
+        saved === "light" ||
+        saved === "dark"
+      ) {
+        return saved;
+      }
+
+      return "system";
+    }
+
+    function applyTheme(theme) {
+      const root = document.documentElement;
+
+      if (theme === "system") {
+        root.removeAttribute("data-theme");
+      } else {
+        root.setAttribute("data-theme", theme);
+      }
+
+      document.querySelectorAll(".theme-option").forEach(button => {
+        const isActive =
+          button.dataset.themeChoice === theme;
+
+        button.classList.toggle("active", isActive);
+        button.setAttribute(
+          "aria-pressed",
+          isActive ? "true" : "false"
+        );
+      });
+    }
+
+    function setTheme(theme) {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+      applyTheme(theme);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const savedTheme = getSavedTheme();
+
+      applyTheme(savedTheme);
+
+      document.querySelectorAll(".theme-option").forEach(button => {
+        button.addEventListener("click", () => {
+          const selectedTheme =
+            button.dataset.themeChoice;
+
+          setTheme(selectedTheme);
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>
