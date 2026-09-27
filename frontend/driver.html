@@ -126,6 +126,25 @@
       background: #475569;
     }
 
+    /* Pre-filled order banner */
+    .prefill-banner {
+      display: none;
+      margin-bottom: 14px;
+      padding: 12px 15px;
+      background: linear-gradient(90deg, #eff6ff, #dbeafe);
+      border: 1.5px solid #93c5fd;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #1e40af;
+      font-weight: 600;
+    }
+    .prefill-banner.visible { display: block; }
+    html[data-theme="dark"] .prefill-banner {
+      background: linear-gradient(90deg, #1e3a8a, #1e40af);
+      border-color: #3b82f6;
+      color: #bfdbfe;
+    }
+
     /* =========================================================
    THEME SYSTEM
    ========================================================= */
@@ -446,6 +465,7 @@
       <p>Driver Delivery Panel</p>
     </div>
     <div class="card">
+      <div id="prefillBanner" class="prefill-banner">📲 Order ID pre-filled by operator — check status below.</div>
       <label for="order_id">Order ID</label>
       <input type="text" id="order_id" placeholder="Enter Order ID" autocomplete="off" autocapitalize="characters">
       <button id="arrivalBtn" type="button" onclick="markArrival()" style="display:none">MARK ARRIVAL</button>
@@ -535,9 +555,27 @@
 
     document.getElementById("order_id").addEventListener("input", handleOrderIdChange);
     window.addEventListener("DOMContentLoaded", () => {
-      if (window.JALSETHU_AUTH && window.JALSETHU_AUTH.user) resumeSavedOrder();
+      // Pre-fill from operator-shared URL (?order=JS-XXXX)
+      const urlParams = new URLSearchParams(window.location.search);
+      const prefilledOrder = urlParams.get("order");
+      if (prefilledOrder) {
+        const input = document.getElementById("order_id");
+        input.value = prefilledOrder.trim().toUpperCase();
+        document.getElementById("prefillBanner").classList.add("visible");
+        // Auto-check as soon as auth is ready
+        if (window.JALSETHU_AUTH && window.JALSETHU_AUTH.user) {
+          checkOrderStatus(true);
+        } else {
+          window.addEventListener("jalsetu:authenticated", () => checkOrderStatus(true), { once: true });
+        }
+      } else if (window.JALSETHU_AUTH && window.JALSETHU_AUTH.user) {
+        resumeSavedOrder();
+      }
     });
-    window.addEventListener("jalsetu:authenticated", resumeSavedOrder);
+    window.addEventListener("jalsetu:authenticated", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get("order")) resumeSavedOrder();
+    });
 
     async function checkOrderStatus(showErrors = true) {
       const orderId = document.getElementById("order_id").value.trim();

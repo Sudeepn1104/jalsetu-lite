@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Select Login</title>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    .splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: var(--bg, #f5f6f8);
+      z-index: 10;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    .splash.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-diamond {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #2563eb, #059669);
+      transform: rotate(45deg);
+      border-radius: 6px;
+      opacity: 0;
+      box-shadow: 0 0 40px 10px rgba(5, 150, 105, 0.25);
+      animation: splash-pop-diamond 1.4s ease 0.4s forwards;
+    }
+
+    @keyframes splash-pop-diamond {
+      from {
+        opacity: 0;
+        transform: rotate(45deg) scale(0.6);
+      }
+
+      to {
+        opacity: 1;
+        transform: rotate(45deg) scale(1);
+      }
+    }
+
+    .splash-name {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      display: flex;
+      gap: 0.4em;
+    }
+
+    .splash-name .word-team {
+      opacity: 0;
+      transform: translateX(-60px);
+      animation: slide-in-left 1s ease 2s forwards;
+    }
+
+    .splash-name .word-diamond {
+      opacity: 0;
+      transform: translateX(60px);
+      background: linear-gradient(135deg, #2563eb, #059669);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: slide-in-right 1s ease 2s forwards;
+    }
+
+    @keyframes slide-in-left {
+      from {
+        opacity: 0;
+        transform: translateX(-60px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slide-in-right {
+      from {
+        opacity: 0;
+        transform: translateX(60px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    #main-content {
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #main-content.visible {
+      opacity: 1;
+    }
+
+    :root {
+      --bg: #f2f7f6;
+      --card: #ffffff;
+      --ink: #0d2b3b;
+      --muted: #587a80;
+      --line: #c9dbd6;
+      --teal: #1f7a5c;
+      --teal-dark: #155940;
+      --gold: #e0a825;
+      --gold-ink: #3a2a00;
+      --shadow: rgba(13, 43, 59, 0.10);
+      --display: "Fraunces", Georgia, serif;
+      --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #08161c;
+        --card: #0f2530;
+        --ink: #e7f2ef;
+        --muted: #8fb0ac;
+        --line: #20443f;
+        --teal: #4fb98b;
+        --teal-dark: #3a9670;
+        --shadow: rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #08161c;
+      --card: #0f2530;
+      --ink: #e7f2ef;
+      --muted: #8fb0ac;
+      --line: #20443f;
+      --teal: #4fb98b;
+      --teal-dark: #3a9670;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--body);
+      background: var(--bg);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .wrapper {
+      max-width: 720px;
+      padding: 24px;
+      text-align: center;
+      position: relative;
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 2rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+
+    .theme-switch {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      margin-bottom: 32px;
+    }
+
+    .theme-switch button {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 5px 14px;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .theme-switch button.active {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .role-card {
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 24px 18px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--ink);
+      transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .role-card:hover,
+    .role-card:focus-visible {
+      border-color: var(--teal);
+      box-shadow: 0 4px 18px var(--shadow);
+      outline: none;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--teal);
+      outline-offset: 2px;
+    }
+
+    .role-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .role-label {
+      font-family: var(--display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .role-description {
+      font-size: 13px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="splash" class="splash">
+    <div class="splash-diamond"></div>
+    <div class="splash-name">
+      <span class="word-team">Team</span><span class="word-diamond">Diamond</span>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <div class="wrapper">
+      <div class="theme-switch" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="light">Light</button>
+        <button type="button" data-theme-choice="dark">Dark</button>
+        <button type="button" data-theme-choice="system">System</button>
+      </div>
+
+      <h1> welcome to Jalsethu </h1>
+      <p class="subtitle">Choose the interface that matches your account.</p>
+
+      <div class="role-grid">
+        <a class="role-card" target="_blank" href="citizen.html">
+          <span class="role-icon">🏠</span>
+          <span class="role-label">Citizen</span>
+          <span class="role-description">Request water tankers and track deliveries.</span>
+        </a>
+        <a class="role-card" target="_blank" href="operator.html">
+          <span class="role-icon">🚛</span>
+          <span class="role-label">Operator</span>
+          <span class="role-description">Manage tankers, routes, and incoming orders.</span>
+        </a>
+        <a class="role-card" target="_blank" href="driver.html">
+          <span class="role-icon">👤</span>
+          <span class="role-label">Driver</span>
+          <span class="role-description">View assigned trips and update delivery status.</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var buttons = document.querySelectorAll('[data-theme-choice]');
+      var STORAGE_KEY = 'theme-preference';
+
+      function applyTheme(choice) {
+        root.setAttribute('data-theme', choice);
+        buttons.forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-theme-choice') === choice);
+        });
+      }
+
+      function setTheme(choice) {
+        try {
+          localStorage.setItem(STORAGE_KEY, choice);
+        } catch (e) {
+          // localStorage unavailable (e.g. private browsing) — theme just won't persist
+        }
+        applyTheme(choice);
+      }
+
+      var saved = 'light';
+      try {
+        saved = localStorage.getItem(STORAGE_KEY) || 'light';
+      } catch (e) { }
+
+      applyTheme(saved);
+
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setTheme(btn.getAttribute('data-theme-choice'));
+        });
+      });
+    })();
+
+    var splash = document.getElementById('splash');
+    var main = document.getElementById('main-content');
+    setTimeout(function () {
+      splash.classList.add('hidden');
+      main.classList.add('visible');
+    }, 3300);
+  </script>
+</body>
+
+</html>

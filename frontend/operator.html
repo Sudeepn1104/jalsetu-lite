@@ -168,6 +168,11 @@
       margin: 6px 0 12px
     }
 
+    .assigned-order { display: grid; gap: 8px; }
+    .assigned-order-title { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .assigned-order-meta { color: #475569; font-size: 14px; white-space: pre-line; }
+    .assigned-order-status { min-height: 20px; font-size: 14px; }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -180,6 +185,68 @@
       border-radius: 10px;
       margin-top: 12px
     }
+
+    /* ── Dispatch confirmation banner ── */
+    .dispatch-banner {
+      display: none;
+      margin-top: 18px;
+      padding: 20px;
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      border: 2px solid #34d399;
+      border-radius: 14px;
+      text-align: center;
+    }
+    .dispatch-banner.visible { display: block; }
+    .dispatch-banner h3 {
+      margin: 0 0 6px;
+      color: #065f46;
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .dispatch-banner .order-id-big {
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: #047857;
+      letter-spacing: .08em;
+      margin: 8px 0;
+    }
+    .dispatch-banner .share-note {
+      font-size: 13px;
+      color: #065f46;
+      margin: 4px 0 14px;
+    }
+    .dispatch-banner .btn-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .dispatch-banner .copy-btn,
+    .dispatch-banner .link-btn {
+      width: auto;
+      padding: 10px 20px;
+      font-size: 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 0;
+      font-weight: 700;
+    }
+    .dispatch-banner .copy-btn { background: #047857; color: #fff; }
+    .dispatch-banner .copy-btn:hover { background: #065f46; }
+    .dispatch-banner .link-btn { background: #fff; color: #047857; border: 1.5px solid #34d399; }
+    .dispatch-banner .link-btn:hover { background: #ecfdf5; }
+    html[data-theme="dark"] .dispatch-banner,
+    @media (prefers-color-scheme: dark) { .dispatch-banner {
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+      border-color: #059669;
+    }}
+    html[data-theme="dark"] .dispatch-banner h3 { color: #a7f3d0; }
+    html[data-theme="dark"] .dispatch-banner .order-id-big { color: #6ee7b7; }
+    html[data-theme="dark"] .dispatch-banner .share-note { color: #a7f3d0; }
+    html[data-theme="dark"] .dispatch-banner .copy-btn { background: #059669; }
+    html[data-theme="dark"] .dispatch-banner .link-btn { background: #064e3b; color: #6ee7b7; border-color: #059669; }
 
     .row {
       display: flex;
@@ -547,45 +614,20 @@
       <div id="offers"></div>
     </div>
 
-    <div class="card" id="confirmCard">
-      <h2>Customer Order</h2>
-      <p class="small">Enter the order ID shown in the citizen's account. Citizens confirm their own orders; this
-        dashboard only checks and dispatches confirmed orders.</p>
-      <label for="orderId">Order ID</label>
-      <input id="orderId" type="text" placeholder="Enter the citizen's Order ID">
-      <button id="confirmBtn" onclick="confirmOrder()">CHECK ORDER STATUS</button>
-      <div id="confirmStatus" class="status"></div>
-
-      <div id="orderInfo" class="order-info hidden">
-        <div class="row"><span class="label">Order ID</span><span id="infoOrder">-</span></div>
-        <div class="row"><span class="label">Operator</span><span id="infoOperator">-</span></div>
-        <div class="row"><span class="label">Status</span><span id="infoStatus">-</span></div>
-      </div>
-      <button id="dispatchBtn" class="dispatch hidden" onclick="dispatchOrder()">DISPATCH TO DRIVER</button>
-      <div id="dispatchStatus" class="status"></div>
-    </div>
-
-    <div class="card" id="statusCard">
-      <h2>Order Status</h2>
-      <label for="statusOrderId">Order ID</label>
-      <input id="statusOrderId" type="text" placeholder="Enter Order ID">
-      <button class="secondary" onclick="checkStatus()">CHECK ORDER STATUS</button>
-      <div id="statusMessage" class="status"></div>
-      <div id="statusInfo" class="order-info hidden">
-        <div class="row"><span class="label">Order ID</span><span id="statusOrder">-</span></div>
-        <div class="row"><span class="label">Status</span><span id="statusValue">-</span></div>
-        <div class="row"><span class="label">Operator</span><span id="statusOperator">-</span></div>
-        <div class="row"><span class="label">Capacity</span><span id="statusCapacity">-</span></div>
-        <div class="row"><span class="label">Price</span><span id="statusPrice">-</span></div>
-      </div>
+    <div class="card" id="operatorOrdersCard">
+      <h2>Your customer orders</h2>
+      <p class="small">Orders for your service appear here automatically. New and updated orders refresh every 10 seconds.</p>
+      <button class="secondary" type="button" onclick="loadOperatorOrders()">REFRESH ORDERS</button>
+      <div id="operatorOrdersStatus" class="status" role="status" aria-live="polite"></div>
+      <div id="operatorOrders" aria-live="polite"></div>
     </div>
   </div>
 
   <script>
     const API_BASE = window.JALSETHU_API_BASE || "http://127.0.0.1:8000";
     let selectedOffer = null;
-    let confirmedOrderId = null;
     let currentOffers = [];
+    let loadingOperatorOrders = false;
 
     function showStatus(id, msg, type) {
       const el = document.getElementById(id);
@@ -656,140 +698,95 @@
       selectedOffer = offer;
       document.querySelectorAll(".offer").forEach(x => x.classList.remove("selected"));
       const selected = document.getElementById(`offer-${index}`); if (selected) selected.classList.add("selected");
-      showStatus("searchStatus", `✅ ${offer.name} selected. Enter the citizen's order ID below to check whether it is ready for dispatch.`, "success");
+      showStatus("searchStatus", `✅ ${offer.name} selected. Customer orders for your service appear in Your customer orders below.`, "success");
     }
 
-    async function confirmOrder() {
-      const orderId = document.getElementById("orderId").value.trim();
-      if (!orderId) { showStatus("confirmStatus", "❌ Enter the real Order ID.", "error"); return }
-      const btn = document.getElementById("confirmBtn"); btn.disabled = true; btn.textContent = "CHECKING...";
+    async function loadOperatorOrders() {
+      if (loadingOperatorOrders) return;
+      loadingOperatorOrders = true;
       try {
-        const response = await fetch(`${API_BASE}/status/${encodeURIComponent(orderId)}`);
+        const response = await fetch(`${API_BASE}/operator/orders`);
         const data = await readResponse(response);
-        if (!response.ok) { showStatus("confirmStatus", `❌ ${data.message || data.error || "Unable to check order."}`, "error"); return }
-        confirmedOrderId = data.order_id || orderId;
-        document.getElementById("statusOrderId").value = confirmedOrderId;
-        document.getElementById("infoOrder").textContent = confirmedOrderId;
-        document.getElementById("infoOperator").textContent = data.operator_id || "-";
-        document.getElementById("infoStatus").textContent = data.status || "-";
-        document.getElementById("orderInfo").classList.remove("hidden");
-        const dispatchButton = document.getElementById("dispatchBtn");
-        dispatchButton.classList.toggle("hidden", data.status !== "CONFIRMED");
-        if (data.status === "CONFIRMED") {
-          showStatus("confirmStatus", "✅ Citizen-confirmed order is ready for dispatch. The delivery OTP is only available to the citizen after driver arrival.", "success");
-        } else {
-          showStatus("confirmStatus", `ℹ️ Order status is ${data.status || "unknown"}. Dispatch becomes available after the citizen confirms.`, "warning");
+        if (!response.ok) throw new Error(data.message || data.error || "Could not load your customer orders.");
+        const orders = Array.isArray(data.orders) ? data.orders : [];
+        const list = document.getElementById("operatorOrders");
+        list.replaceChildren();
+        if (!orders.length) {
+          const empty = document.createElement("p");
+          empty.className = "small";
+          empty.textContent = "No active orders for your service yet.";
+          list.appendChild(empty);
         }
-      } catch (e) { console.error(e); showStatus("confirmStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
-      finally { btn.disabled = false; btn.textContent = "CHECK ORDER STATUS" }
+        orders.forEach(function (order) {
+          const card = document.createElement("article");
+          card.className = "offer assigned-order";
+          const heading = document.createElement("div");
+          heading.className = "assigned-order-title";
+          const orderId = document.createElement("strong");
+          orderId.textContent = order.order_id;
+          const status = document.createElement("strong");
+          status.textContent = order.status;
+          heading.append(orderId, status);
+          const details = document.createElement("div");
+          details.className = "assigned-order-meta";
+          const location = Number.isFinite(Number(order.lat)) && Number.isFinite(Number(order.lng))
+            ? `\nDelivery: ${Number(order.lat).toFixed(5)}, ${Number(order.lng).toFixed(5)}`
+            : "";
+          details.textContent = `${order.capacity_l} L · ${order.water_type} · ₹${order.price}${location}\nReceived: ${new Date(order.created_at).toLocaleString()}`;
+          card.append(heading, details);
+          if (order.status === "CONFIRMED") {
+            const dispatch = document.createElement("button");
+            dispatch.className = "dispatch";
+            dispatch.type = "button";
+            dispatch.textContent = "DISPATCH TO DRIVER";
+            dispatch.addEventListener("click", function () { dispatchAssignedOrder(order.order_id, dispatch, card); });
+            card.appendChild(dispatch);
+          } else {
+            const note = document.createElement("div");
+            note.className = "small";
+            note.textContent = order.status === "OFFERED"
+              ? "Waiting for the customer to confirm this order."
+              : order.status === "DISPATCHED"
+                ? "Dispatched; waiting for the driver to arrive."
+                : "The driver has arrived at the delivery location.";
+            card.appendChild(note);
+          }
+          list.appendChild(card);
+        });
+        showStatus("operatorOrdersStatus", `Updated just now · ${orders.length} active order(s).`, "info");
+      } catch (error) {
+        showStatus("operatorOrdersStatus", `❌ ${error.message || "Could not load your customer orders."}`, "error");
+      } finally {
+        loadingOperatorOrders = false;
+      }
     }
 
-    async function dispatchOrder() {
-      const orderId = confirmedOrderId || document.getElementById("orderId").value.trim();
-      if (!orderId) { showStatus("dispatchStatus", "❌ No confirmed Order ID.", "error"); return }
-      const btn = document.getElementById("dispatchBtn"); btn.disabled = true; btn.textContent = "DISPATCHING...";
+    async function dispatchAssignedOrder(orderId, button, card) {
+      button.disabled = true;
+      button.textContent = "DISPATCHING…";
       try {
         const response = await fetch(`${API_BASE}/operator/dispatch/${encodeURIComponent(orderId)}`, { method: "POST" });
         const data = await readResponse(response);
-        if (!response.ok) { showStatus("dispatchStatus", `❌ ${data.message || data.error || "Unable to dispatch order."}`, "error"); return }
-        showStatus("dispatchStatus", "✅ Order dispatched to the driver.", "success");
-      } catch (e) { console.error(e); showStatus("dispatchStatus", "❌ Cannot connect to the JalSetu-Lite server.", "error") }
-      finally { btn.disabled = false; btn.textContent = "DISPATCH TO DRIVER" }
-    }
-
-    let statusPollTimer = null;
-
-    async function checkStatus(showMessage = true) {
-      const orderId =
-        document.getElementById("statusOrderId").value.trim() ||
-        document.getElementById("orderId").value.trim();
-
-      if (!orderId) {
-        if (showMessage) {
-          showStatus("statusMessage", "❌ Enter an Order ID first.", "error");
-        }
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${API_BASE}/status/${encodeURIComponent(orderId)}`
-        );
-
-        const data = await readResponse(response);
-
-        if (!response.ok) {
-          if (showMessage) {
-            showStatus(
-              "statusMessage",
-              `❌ ${data.message || data.error || "Order not found."}`,
-              "error"
-            );
-          }
-          return;
-        }
-
-        document.getElementById("statusCard").classList.remove("hidden");
-
-        document.getElementById("statusOrder").textContent =
-          data.order_id || orderId;
-
-        document.getElementById("statusValue").textContent =
-          data.status || "-";
-
-        document.getElementById("statusOperator").textContent =
-          data.operator_id || "-";
-
-        document.getElementById("statusCapacity").textContent =
-          data.capacity_l ?? "-";
-
-        document.getElementById("statusPrice").textContent =
-          data.price ?? "-";
-
-        if (showMessage) {
-          showStatus(
-            "statusMessage",
-            "✅ Order status loaded.",
-            "info"
-          );
-        }
-
-        // Stop automatic checking after delivery is completed
-        if (data.status === "DELIVERED") {
-          if (statusPollTimer) {
-            clearInterval(statusPollTimer);
-            statusPollTimer = null;
-          }
-
-          showStatus(
-            "statusMessage",
-            "✅ Water delivered successfully. Order is DELIVERED.",
-            "success"
-          );
-        }
-
-      } catch (e) {
-        console.error(e);
-
-        if (showMessage) {
-          showStatus(
-            "statusMessage",
-            "❌ Cannot connect to the JalSetu-Lite server.",
-            "error"
-          );
-        }
+        if (!response.ok) throw new Error(data.message || data.error || "Unable to dispatch this order.");
+        const status = document.createElement("div");
+        status.className = "assigned-order-status success";
+        status.textContent = `✅ ${data.order_id || orderId} dispatched to the driver.`;
+        card.appendChild(status);
+        await loadOperatorOrders();
+      } catch (error) {
+        const status = document.createElement("div");
+        status.className = "assigned-order-status error";
+        status.textContent = error.message || "Could not dispatch this order.";
+        card.appendChild(status);
+        button.disabled = false;
+        button.textContent = "DISPATCH TO DRIVER";
       }
     }
-    // Automatic order-status checking every 5 seconds
-    statusPollTimer = setInterval(() => {
-      const orderId =
-        document.getElementById("statusOrderId").value.trim() ||
-        document.getElementById("orderId").value.trim();
 
-      if (orderId) {
-        checkStatus(false);
-      }
-    }, 5000);
+    document.addEventListener("DOMContentLoaded", function () {
+      loadOperatorOrders();
+      setInterval(loadOperatorOrders, 10000);
+    });
     /* =========================================================
      THEME SWITCHER
      ========================================================= */

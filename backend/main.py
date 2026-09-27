@@ -784,6 +784,26 @@ def get_active_citizen_orders(authorization: str | None = Header(default=None)):
     return {"orders": [dict(row) for row in rows]}
 
 
+@app.get("/operator/orders")
+def get_operator_orders(authorization: str | None = Header(default=None)):
+    user = authenticated_user(authorization)
+    require_role(user, "operator")
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT order_id, status, operator_id, capacity_l, water_type, price,
+                   lat, lng, created_at
+            FROM orders
+            WHERE operator_id = ?
+              AND status IN ('OFFERED', 'CONFIRMED', 'DISPATCHED', 'ARRIVED')
+            ORDER BY created_at DESC, order_number DESC
+            LIMIT 100
+            """,
+            (user["operator_id"],),
+        ).fetchall()
+    return {"orders": [dict(row) for row in rows]}
+
+
 def require_capacity(capacity_l: int) -> None:
     if capacity_l not in TARIFF_PUBLIC:
         raise api_error(422, "UNSUPPORTED_CAPACITY", "Capacity must be 4000, 5000, 6000, or 12000 litres")
@@ -1291,6 +1311,6 @@ def dev_dispatch(order_id: str, authorization: str | None = Header(default=None)
 if FRONTEND_PATH.is_dir():
     @app.get("/", include_in_schema=False)
     def frontend_home():
-        return RedirectResponse("/citizen.html")
+        return RedirectResponse("/index.html")
 
     app.mount("/", StaticFiles(directory=FRONTEND_PATH), name="frontend")
