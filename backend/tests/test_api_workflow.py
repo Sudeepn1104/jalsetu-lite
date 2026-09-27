@@ -357,6 +357,87 @@ class APIWorkflowTests(unittest.TestCase):
             ["OFFERED", "CONFIRMED", "CANCELLED"],
         )
 
+    def test_feedback_requires_terminal_owned_order_and_allows_edits_within_48_hours(self) -> None:
+        owner_token = self.register_citizen("feedback-owner")
+        other_token = self.register_citizen("feedback-other")
+        order_id, _ = self.create_order(owner_token)
+
+        status, body = self.request(
+            "POST", f"/orders/{order_id}/feedback", {"rating": 5}, token=owner_token
+        )
+        self.assertEqual(status, 409, body)
+        self.assertEqual(body["error"], "FEEDBACK_NOT_AVAILABLE")
+
+        status, body = self.request(
+            "POST", f"/orders/{order_id}/feedback", {"rating": 5}, token=other_token
+        )
+        self.assertEqual(status, 403, body)
+        self.assertEqual(body["error"], "ORDER_FORBIDDEN")
+
+        status, body = self.request("POST", f"/orders/{order_id}/cancel", token=owner_token)
+        self.assertEqual(status, 200, body)
+        status, body = self.request("POST", f"/orders/{order_id}/feedback", {}, token=owner_token)
+        self.assertEqual(status, 422, body)
+
+        status, first = self.request(
+            "POST", f"/orders/{order_id}/feedback", {"rating": 5, "comment": "Great delivery"}, token=owner_token
+        )
+        self.assertEqual(status, 200, first)
+        self.assertEqual(first["trigger_type"], "CANCELLED")
+        status, edited = self.request(
+            "POST", f"/orders/{order_id}/feedback", {"rating": 4, "comment": "Updated note"}, token=owner_token
+        )
+        self.assertEqual(status, 200, edited)
+        self.assertEqual(edited["id"], first["id"])
+        self.assertEqual(edited["rating"], 4)
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            connection.execute(
+                "UPDATE vendor_feedbacks SET created_at = ? WHERE order_id = ?",
+                ("2026-01-01T00:00:00+00:00", order_id),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        status, body = self.request(
+            "POST", f"/orders/{order_id}/feedback", {"rating": 3}, token=owner_token
+        )
+        self.assertEqual(status, 403, body)
+        self.assertEqual(body["error"], "FEEDBACK_EDIT_EXPIRED")
+
+    def test_vendor_feedback_summary_pagination_and_empty_state(self) -> None:
+        empty_status, empty = self.request("GET", "/operators/P/feedback")
+        self.assertEqual(empty_status, 200, empty)
+        self.assertEqual(empty["summary"]["total_ratings"], 0)
+        self.assertEqual(empty["summary"]["rating_distribution"], {str(star): 0 for star in range(1, 6)})
+        self.assertEqual(empty["reviews"], [])
+        self.assertEqual(empty["pagination"]["total_pages"], 0)
+
+        baseline_status, baseline = self.request("GET", "/operators/A/feedback")
+        self.assertEqual(baseline_status, 200, baseline)
+
+        citizen_token = self.register_citizen("feedback-summary")
+        order_id, _ = self.create_order(citizen_token)
+        self.request("POST", f"/orders/{order_id}/cancel", token=citizen_token)
+        status, submitted = self.request(
+            "POST", f"/orders/{order_id}/feedback", {"rating": 4, "comment": "Prompt delivery"}, token=citizen_token
+        )
+        self.assertEqual(status, 200, submitted)
+
+        status, result = self.request("GET", "/operators/A/feedback?page=1&limit=1")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["vendor_id"], "A")
+        self.assertEqual(result["summary"]["total_ratings"], baseline["summary"]["total_ratings"] + 1)
+        self.assertEqual(result["summary"]["rating_distribution"]["4"], baseline["summary"]["rating_distribution"]["4"] + 1)
+        expected_average = ((baseline["summary"]["average_rating"] or 0) * baseline["summary"]["total_ratings"] + 4) / result["summary"]["total_ratings"]
+        self.assertEqual(result["summary"]["average_rating"], round(expected_average, 2))
+        self.assertEqual(result["reviews"][0]["comment"], "Prompt delivery")
+        self.assertEqual(result["reviews"][0]["trigger_type"], "CANCELLED")
+        self.assertEqual(result["pagination"], {"page": 1, "limit": 1, "total_pages": baseline["pagination"]["total_items"] + 1, "total_items": baseline["pagination"]["total_items"] + 1})
+        status, invalid = self.request("GET", "/operators/A/feedback?page=0")
+        self.assertEqual(status, 422, invalid)
+
     def test_cancellation_and_dispatch_race_has_exactly_one_winner(self) -> None:
         citizen_token = self.register_citizen("cancel-race")
         order_id, _ = self.create_order(citizen_token)

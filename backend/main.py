@@ -189,6 +189,11 @@ class AdminPasswordResetRequest(APIModel):
     password: str = Field(min_length=10, max_length=128)
 
 
+class OrderFeedbackRequest(APIModel):
+    rating: int | None = Field(default=None, ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
+
+
 @contextmanager
 def get_connection():
     connection = sqlite3.connect(DB_PATH, timeout=10)
@@ -413,6 +418,24 @@ def init_db():
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS vendor_feedbacks (
+                id TEXT PRIMARY KEY,
+                order_id TEXT NOT NULL UNIQUE REFERENCES orders(order_id) ON DELETE CASCADE,
+                vendor_id TEXT NOT NULL,
+                citizen_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                rating INTEGER CHECK (rating IS NULL OR rating BETWEEN 1 AND 5),
+                comment TEXT CHECK (comment IS NULL OR length(comment) <= 2000),
+                trigger_type TEXT NOT NULL CHECK (trigger_type IN ('DELIVERED', 'DISPUTED', 'CANCELLED')),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                CHECK (rating IS NOT NULL OR comment IS NOT NULL)
+            )
+            """
+        )
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_vendor_feedbacks_vendor ON vendor_feedbacks(vendor_id, created_at DESC)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_vendor_feedbacks_citizen ON vendor_feedbacks(citizen_id)")
     with get_connection() as connection:
         migrate_order_event_integrity(connection)
 
@@ -782,6 +805,100 @@ def get_active_citizen_orders(authorization: str | None = Header(default=None)):
             (user["id"],),
         ).fetchall()
     return {"orders": [dict(row) for row in rows]}
+
+
+@app.post("/orders/{order_id}/feedback")
+def submit_order_feedback(
+    order_id: str,
+    request: OrderFeedbackRequest,
+    authorization: str | None = Header(default=None),
+):
+    user = authenticated_user(authorization)
+    require_role(user, "citizen")
+    comment = (request.comment or "").strip() or None
+    if request.rating is None and comment is None:
+        raise api_error(422, "FEEDBACK_REQUIRED", "Add a rating or comment before submitting")
+    now = datetime.now(timezone.utc)
+    now_text = now.isoformat()
+    with get_connection() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        order = connection.execute(
+            "SELECT order_id, status, operator_id, citizen_user_id FROM orders WHERE order_id = ?",
+            (order_id,),
+        ).fetchone()
+        if order is None:
+            raise api_error(404, "ORDER_NOT_FOUND", "Order was not found")
+        if order["citizen_user_id"] != user["id"]:
+            raise api_error(403, "ORDER_FORBIDDEN", "This order belongs to another account")
+        if order["status"] not in {"DELIVERED", "DISPUTED", "CANCELLED"}:
+            raise api_error(409, "FEEDBACK_NOT_AVAILABLE", "Feedback is available after an order is completed, disputed, or cancelled")
+        existing = connection.execute(
+            "SELECT id, created_at FROM vendor_feedbacks WHERE order_id = ?", (order_id,)
+        ).fetchone()
+        if existing:
+            try:
+                created_at = datetime.fromisoformat(existing["created_at"].replace("Z", "+00:00"))
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+            except ValueError as exc:
+                raise api_error(500, "FEEDBACK_TIMESTAMP_INVALID", "Stored feedback timestamp is invalid") from exc
+            if now - created_at > timedelta(hours=48):
+                raise api_error(403, "FEEDBACK_EDIT_EXPIRED", "Feedback can only be edited within 48 hours of submission")
+            connection.execute(
+                "UPDATE vendor_feedbacks SET rating = ?, comment = ?, trigger_type = ?, updated_at = ? WHERE id = ?",
+                (request.rating, comment, order["status"], now_text, existing["id"]),
+            )
+            feedback_id = existing["id"]
+            created_text = existing["created_at"]
+        else:
+            feedback_id = secrets.token_urlsafe(18)
+            connection.execute(
+                """INSERT INTO vendor_feedbacks
+                   (id, order_id, vendor_id, citizen_id, rating, comment, trigger_type, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (feedback_id, order_id, order["operator_id"], user["id"], request.rating, comment, order["status"], now_text, now_text),
+            )
+            created_text = now_text
+    return {"id": feedback_id, "order_id": order_id, "rating": request.rating, "comment": comment,
+            "trigger_type": order["status"], "created_at": created_text, "updated_at": now_text}
+
+
+@app.get("/operators/{vendor_id}/feedback")
+def get_vendor_feedback(vendor_id: str, page: int = 1, limit: int = 10):
+    if page < 1 or limit < 1 or limit > 100:
+        raise api_error(422, "INVALID_PAGINATION", "Page must be positive and limit must be between 1 and 100")
+    if vendor_id not in OPERATORS:
+        raise api_error(404, "VENDOR_NOT_FOUND", "Operator was not found")
+    with get_connection() as connection:
+        summary = connection.execute(
+            """SELECT COUNT(rating) AS total_ratings, AVG(rating) AS average_rating
+               FROM vendor_feedbacks WHERE vendor_id = ?""", (vendor_id,)
+        ).fetchone()
+        distribution_rows = connection.execute(
+            "SELECT rating, COUNT(*) AS count FROM vendor_feedbacks WHERE vendor_id = ? AND rating IS NOT NULL GROUP BY rating",
+            (vendor_id,),
+        ).fetchall()
+        total_items = connection.execute(
+            "SELECT COUNT(*) FROM vendor_feedbacks WHERE vendor_id = ?", (vendor_id,)
+        ).fetchone()[0]
+        reviews = connection.execute(
+            """SELECT id, rating, comment, trigger_type, created_at FROM vendor_feedbacks
+               WHERE vendor_id = ? ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?""",
+            (vendor_id, limit, (page - 1) * limit),
+        ).fetchall()
+    distribution = {str(star): 0 for star in range(1, 6)}
+    distribution.update({str(row["rating"]): row["count"] for row in distribution_rows})
+    return {
+        "vendor_id": vendor_id,
+        "summary": {
+            "average_rating": round(summary["average_rating"], 2) if summary["average_rating"] is not None else None,
+            "total_ratings": summary["total_ratings"],
+            "total_reviews": total_items,
+            "rating_distribution": distribution,
+        },
+        "reviews": [dict(row) for row in reviews],
+        "pagination": {"page": page, "limit": limit, "total_pages": math.ceil(total_items / limit), "total_items": total_items},
+    }
 
 
 @app.get("/operator/orders")

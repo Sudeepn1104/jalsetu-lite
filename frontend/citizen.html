@@ -73,6 +73,9 @@ h3{font-size:13.5px;color:var(--muted);margin:14px 0 7px;font-weight:600}
 .offer .nm,.offer .meta{min-width:0;overflow-wrap:anywhere}
 .offer .nm{font-weight:600}
 .offer .pr{font-family:var(--display);font-weight:700;font-size:19px;text-align:right}
+.offer-actions{grid-column:1/-1;display:flex;justify-content:flex-end;margin-top:4px}.offer-actions button{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--teal);font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.feedback-overlay{position:fixed;inset:0;z-index:1000;background:#06161dcc;display:flex;justify-content:flex-end}.feedback-drawer{width:min(100%,480px);height:100%;overflow:auto;box-sizing:border-box;padding:24px;background:var(--bg);color:var(--ink);box-shadow:-12px 0 40px #0004}.feedback-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.feedback-head button,.feedback-drawer button,.feedback-prompt button{cursor:pointer;font:inherit}.feedback-head button{border:0;background:transparent;color:inherit;font-size:24px}.feedback-summary{padding:14px;border-radius:12px;background:var(--card);margin:12px 0}.feedback-review{padding:13px 0;border-bottom:1px solid var(--line)}.feedback-review p{white-space:pre-wrap;overflow-wrap:anywhere}.feedback-trigger{font-size:12px;color:var(--muted)}.feedback-stars{color:#c78800}.feedback-overlay[hidden]{display:none}.feedback-prompt{position:fixed;inset:0;z-index:1001;display:grid;place-items:center;padding:18px;background:#06161dcc}.feedback-prompt[hidden]{display:none}.feedback-prompt-card{width:min(100%,440px);max-height:90vh;overflow:auto;box-sizing:border-box;padding:22px;border-radius:16px;background:var(--card);color:var(--ink);box-shadow:0 20px 60px #0005}.feedback-rating{display:flex;gap:8px;margin:12px 0}.feedback-rating button{border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:8px 12px}.feedback-rating button[aria-pressed="true"]{background:#f4c542;color:#17130a}.feedback-prompt textarea{box-sizing:border-box;width:100%;min-height:100px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}.feedback-prompt-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.feedback-prompt-actions button{padding:9px 13px;border:0;border-radius:8px;background:var(--teal);color:white;font-weight:700}.feedback-prompt-actions [data-act="feedback-skip"]{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.feedback-toast{position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);max-width:calc(100% - 36px);padding:12px 18px;border-radius:10px;background:var(--teal);color:white;box-shadow:0 8px 28px #0004;text-align:center}
 .meta{font-size:12.5px;color:var(--muted)}
 .tag{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 7px;margin-left:6px}
 .tag.pub{background:var(--gold);color:var(--gold-ink)}
@@ -112,6 +115,7 @@ td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
   <div id="view"></div>
   <p class="foot" id="foot"></p>
 </div>
+<div id="feedbackOverlays"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -137,6 +141,8 @@ var I18N = {
   reqH:"Request a tanker", size:"Tanker size", wtype:"Water type", fresh:"Fresh water", treated:"Treated water", switchToLight:"Switch to light mode", switchToDark:"Switch to dark mode",
   locationHeading:"Delivery location", loc:"Or tap the map to set your pin", locationSearchHint:"Enter an address, area, or landmark to find it on the map.", selectedLocation:"Selected location: ", currentLocationName:"Current location", pinnedLocation:"Map pin", locatingAddress:"Finding the address for this pin…", pinAddressFound:"Pin address updated.", pinAddressUnavailable:"No address found; the pin is saved at the shown coordinates.", locationLabel:"Search location", locationPlaceholder:"Address, area, or landmark", searchLocation:"Find", useCurrent:"Use current location", locatingCurrent:"Getting your location…", locationAccessErr:"Could not access your location. Allow location access and try again.", locating:"Searching for location…", locationFound:"Location found. Adjust the pin if needed.", pinSelected:"Location selected. Tap another spot to move the pin.", noLocation:"No matching location found. Try a nearby area or landmark.", locationErr:"Could not search now. Check your connection and try again.", find:"See offers", noPin:"Choose a location to see offers",
   offH:"Offers near you", pub:"Public option", above:"Above public rate by Rs ", pickOne:"Pick an offer to continue",
+  viewFeedback:"View feedback", feedbackTitle:"Rate your order", feedbackIntro:"Your feedback helps people choose a tanker operator.", feedbackComment:"Comment (optional)", feedbackSubmit:"Submit feedback", feedbackSkip:"Skip", feedbackEmpty:"No feedback yet for this vendor", feedbackLoading:"Loading feedback…", feedbackError:"Could not load feedback.", feedbackNoRating:"No rating", feedbackSubmitError:"Could not submit feedback. Please try again.", feedbackRequired:"Choose a rating or write a comment.", feedbackStar:"star", feedbackReviews:"reviews", feedbackNext:"Load more",
+  feedbackSaved:"Feedback submitted. Thank you.",
   confirm:"Confirm this tanker", payNote:"Demo only: preview the UPI QR flow. The demo QR cannot send a real payment.",
   min:"min", km:"km", per:"per 1,000 L", searching:"Finding offers…", searchErr:"Could not reach the server. Is the backend running on port 8000?",
   trkH:"Tanker on the way", eta:"Arriving in", arrivedH:"Tanker has arrived",
@@ -151,6 +157,8 @@ var I18N = {
   reqH:"ಟ್ಯಾಂಕರ್ ಕೇಳಿ", size:"ಟ್ಯಾಂಕರ್ ಗಾತ್ರ", wtype:"ನೀರಿನ ಪ್ರಕಾರ", fresh:"ಶುದ್ಧ ನೀರು", treated:"ಸಂಸ್ಕರಿತ ನೀರು", switchToLight:"ಬೆಳಕು ಮೋಡ್‌ಗೆ ಬದಲಿಸಿ", switchToDark:"ಕತ್ತಲೆ ಮೋಡ್‌ಗೆ ಬದಲಿಸಿ",
   locationHeading:"ವಿತರಣಾ ಸ್ಥಳ", loc:"ಅಥವಾ ಪಿನ್ ಹಾಕಲು ನಕ್ಷೆಯನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ", locationSearchHint:"ನಕ್ಷೆಯಲ್ಲಿ ಹುಡುಕಲು ವಿಳಾಸ, ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತನ್ನು ನಮೂದಿಸಿ.", selectedLocation:"ಆಯ್ಕೆ ಮಾಡಿದ ಸ್ಥಳ: ", currentLocationName:"ಪ್ರಸ್ತುತ ಸ್ಥಳ", pinnedLocation:"ನಕ್ಷೆಯಲ್ಲಿ ಗುರುತಿಸಿದ ಸ್ಥಳ", locatingAddress:"ಈ ಪಿನ್‌ನ ವಿಳಾಸ ಹುಡುಕಲಾಗುತ್ತಿದೆ…", pinAddressFound:"ಪಿನ್‌ನ ವಿಳಾಸ ನವೀಕರಿಸಲಾಗಿದೆ.", pinAddressUnavailable:"ವಿಳಾಸ ಸಿಗಲಿಲ್ಲ. ಪಿನ್ ನಿರ್ದೇಶಾಂಕಗಳೊಂದಿಗೆ ಉಳಿಸಲಾಗಿದೆ.", locationLabel:"ಸ್ಥಳ ಹುಡುಕಿ", locationPlaceholder:"ವಿಳಾಸ, ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತು", searchLocation:"ಹುಡುಕಿ", useCurrent:"ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ", locatingCurrent:"ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗುತ್ತಿದೆ…", locationAccessErr:"ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗಲಿಲ್ಲ. ಸ್ಥಳ ಅನುಮತಿ ನೀಡಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", locating:"ಸ್ಥಳ ಹುಡುಕಲಾಗುತ್ತಿದೆ…", locationFound:"ಸ್ಥಳ ಕಂಡುಬಂದಿದೆ. ಬೇಕಾದರೆ ಪಿನ್ ಸರಿಪಡಿಸಿ.", pinSelected:"ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ. ಪಿನ್ ಸರಿಸಲು ನಕ್ಷೆಯ ಬೇರೆ ಸ್ಥಳ ಟ್ಯಾಪ್ ಮಾಡಿ.", noLocation:"ಸ್ಥಳ ಸಿಗಲಿಲ್ಲ. ಹತ್ತಿರದ ಪ್ರದೇಶ ಅಥವಾ ಹೆಗ್ಗುರುತು ಹುಡುಕಿ.", locationErr:"ಈಗ ಸ್ಥಳ ಹುಡುಕಲಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", find:"ಆಫರ್‌ಗಳನ್ನು ನೋಡಿ", noPin:"ಆಫರ್‌ಗಳನ್ನು ನೋಡಲು ಸ್ಥಳ ಆಯ್ಕೆಮಾಡಿ",
   offH:"ಹತ್ತಿರದ ಆಫರ್‌ಗಳು", pub:"ಸರ್ಕಾರಿ ಆಯ್ಕೆ", above:"ಸರ್ಕಾರಿ ದರಕ್ಕಿಂತ ಹೆಚ್ಚು: ₹", pickOne:"ಮುಂದುವರಿಯಲು ಒಂದು ಆಫರ್ ಆಯ್ಕೆಮಾಡಿ",
+  viewFeedback:"ಪ್ರತಿಕ್ರಿಯೆ ನೋಡಿ", feedbackTitle:"ನಿಮ್ಮ ಆರ್ಡರ್‌ಗೆ ರೇಟಿಂಗ್ ನೀಡಿ", feedbackIntro:"ಟ್ಯಾಂಕರ್ ಆಯ್ಕೆ ಮಾಡಲು ನಿಮ್ಮ ಪ್ರತಿಕ್ರಿಯೆ ಸಹಾಯ ಮಾಡುತ್ತದೆ.", feedbackComment:"ಕಾಮೆಂಟ್ (ಐಚ್ಛಿಕ)", feedbackSubmit:"ಪ್ರತಿಕ್ರಿಯೆ ಸಲ್ಲಿಸಿ", feedbackSkip:"ಬೇಡ", feedbackEmpty:"ಈ ಮಾರಾಟಗಾರರಿಗೆ ಇನ್ನೂ ಪ್ರತಿಕ್ರಿಯೆ ಇಲ್ಲ", feedbackLoading:"ಪ್ರತಿಕ್ರಿಯೆ ಲೋಡ್ ಆಗುತ್ತಿದೆ…", feedbackError:"ಪ್ರತಿಕ್ರಿಯೆ ಲೋಡ್ ಆಗಲಿಲ್ಲ.", feedbackNoRating:"ರೇಟಿಂಗ್ ಇಲ್ಲ", feedbackSubmitError:"ಪ್ರತಿಕ್ರಿಯೆ ಸಲ್ಲಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.", feedbackRequired:"ರೇಟಿಂಗ್ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಕಾಮೆಂಟ್ ಬರೆಯಿರಿ.", feedbackStar:"ನಕ್ಷತ್ರ", feedbackReviews:"ಪ್ರತಿಕ್ರಿಯೆಗಳು", feedbackNext:"ಇನ್ನಷ್ಟು ನೋಡಿ",
+  feedbackSaved:"ಪ್ರತಿಕ್ರಿಯೆ ಸಲ್ಲಿಸಲಾಗಿದೆ. ಧನ್ಯವಾದಗಳು.",
   confirm:"ಈ ಟ್ಯಾಂಕರ್ ದೃಢೀಕರಿಸಿ", payNote:"ಡೆಮೊ ಮಾತ್ರ: UPI QR ವಿಧಾನವನ್ನು ಪೂರ್ವವೀಕ್ಷಿಸಿ. ಈ QR ನೈಜ ಪಾವತಿ ಕಳುಹಿಸುವುದಿಲ್ಲ.",
   min:"ನಿಮಿಷ", km:"ಕಿ.ಮೀ", per:"1,000 ಲೀ.ಗೆ", searching:"ಆಫರ್‌ಗಳನ್ನು ಹುಡುಕುತ್ತಿದೆ…", searchErr:"ಸರ್ವರ್ ತಲುಪಲಾಗಲಿಲ್ಲ. ಬ್ಯಾಕೆಂಡ್ ಪೋರ್ಟ್ 8000ರಲ್ಲಿ ಚಾಲನೆಯಲ್ಲಿದೆಯೇ?",
   trkH:"ಟ್ಯಾಂಕರ್ ಬರುತ್ತಿದೆ", eta:"ತಲುಪಲು", arrivedH:"ಟ್ಯಾಂಕರ್ ತಲುಪಿದೆ",
@@ -163,7 +171,7 @@ var I18N = {
 };
 
 var S = { lang:"en", step:0, cap:6000, water:"fresh", pin:null, offers:[], sel:null, orderId:null,
-          otp:null, status:null, poll:null, err:"", activeOrders:[], operatorNames:{}, activeLoadError:false, codeLoading:false, theme:initialTheme(), locationMessage:null, locationName:"", locationNameKey:"", locationRevision:0, locationNeedsReverse:false };
+          otp:null, status:null, poll:null, err:"", activeOrders:[], operatorNames:{}, activeLoadError:false, codeLoading:false, theme:initialTheme(), locationMessage:null, locationName:"", locationNameKey:"", locationRevision:0, locationNeedsReverse:false, feedbackRating:null, feedbackComment:"", feedbackOrder:null, feedbackVendor:null, feedbackLoading:false, feedbackPage:1, feedbackTotalPages:1, feedbackData:null, feedbackError:"", feedbackSubmitting:false, feedbackSavedOrderId:null, feedbackSuccess:false, feedbackPromptQueue:[] };
 var map, marker;
 document.documentElement.setAttribute("data-theme",S.theme);
 
@@ -194,6 +202,79 @@ async function api(path, opts){
   var body = await res.json().catch(function(){ return {}; });
   if(!res.ok){ var e = new Error(body.message || body.error || "Request failed"); e.body = body; e.status = res.status; throw e; }
   return body;
+}
+
+function feedbackKey(orderId){ return "jalsethu-feedback-dismissed:"+orderId; }
+function escapeHTML(value){ return String(value==null?"":value).replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];}); }
+function queueFeedbackPrompt(order, requested){
+  if(!order || !order.order_id || !["DELIVERED","DISPUTED","CANCELLED"].includes(order.status)) return;
+  if(!requested){try{ if(localStorage.getItem(feedbackKey(order.order_id))) return; }catch(e){}}
+  if(S.feedbackOrder && S.feedbackOrder.order_id===order.order_id) return;
+  if(S.feedbackPromptQueue.some(function(item){return item.order_id===order.order_id;})) return;
+  S.feedbackPromptQueue.push(order); showNextFeedbackPrompt();
+}
+function showNextFeedbackPrompt(){
+  if(S.feedbackOrder || !S.feedbackPromptQueue.length) return;
+  S.feedbackOrder=S.feedbackPromptQueue.shift(); S.feedbackRating=null; S.feedbackComment=""; S.feedbackError=""; renderFeedbackOverlays();
+}
+function dismissFeedbackPrompt(){
+  if(S.feedbackOrder){try{localStorage.setItem(feedbackKey(S.feedbackOrder.order_id),"1");}catch(e){}}
+  S.feedbackOrder=null; S.feedbackError=""; showNextFeedbackPrompt();
+}
+window.addEventListener("jalsethu:feedback-request",function(event){queueFeedbackPrompt(event.detail,true);});
+function renderFeedbackOverlays(){
+  var root=document.getElementById("feedbackOverlays"); if(!root) return;
+  var html="";
+  if(S.feedbackSuccess) html+='<div class="feedback-toast" role="status">'+t("feedbackSaved")+'</div>';
+  if(S.feedbackVendor){
+    var data=S.feedbackData, summary=data&&data.summary, dist=summary&&summary.rating_distribution||{};
+    html+='<div class="feedback-overlay" data-act="feedback-backdrop"><section class="feedback-drawer" role="dialog" aria-modal="true" aria-labelledby="feedbackDrawerTitle">';
+    html+='<div class="feedback-head"><h2 id="feedbackDrawerTitle">'+t("viewFeedback")+'</h2><button type="button" data-act="close-feedback" aria-label="Close">×</button></div>';
+    if(S.feedbackError) html+='<p role="alert">'+escapeHTML(S.feedbackError)+'</p>';
+    else if(!data) html+='<p>'+t("feedbackLoading")+'</p>';
+    else if(!summary.total_reviews) html+='<div class="feedback-summary">'+t("feedbackEmpty")+'</div>';
+    else {
+      html+='<div class="feedback-summary"><strong class="feedback-stars">'+(summary.average_rating==null?t("feedbackNoRating"):escapeHTML(summary.average_rating.toFixed(2))+" ★")+'</strong> · '+summary.total_reviews+' '+t("feedbackReviews")+'<div>';
+      [5,4,3,2,1].forEach(function(star){html+='<div>'+star+' ★ <progress max="'+Math.max(summary.total_ratings,1)+'" value="'+(dist[String(star)]||0)+'"></progress> '+(dist[String(star)]||0)+'</div>';});
+      html+='</div></div>';
+      (data.reviews||[]).forEach(function(review){
+        html+='<article class="feedback-review"><strong class="feedback-stars">'+(review.rating==null?t("feedbackNoRating"):"★".repeat(review.rating)+"☆".repeat(5-review.rating))+'</strong>';
+        html+='<span class="feedback-trigger"> · '+escapeHTML(review.trigger_type)+" · "+escapeHTML(new Date(review.created_at).toLocaleString())+'</span>';
+        if(review.comment) html+='<p>'+escapeHTML(review.comment)+'</p>';
+        html+='</article>';
+      });
+      if(data.pagination.page<data.pagination.total_pages) html+='<button type="button" data-act="feedback-more" '+(S.feedbackLoading?'disabled':'')+'>'+t("feedbackNext")+'</button>';
+    }
+    html+='</section></div>';
+  }
+  if(S.feedbackOrder){
+    html+='<div class="feedback-prompt"><section class="feedback-prompt-card" role="dialog" aria-modal="true" aria-labelledby="feedbackPromptTitle">';
+    html+='<h2 id="feedbackPromptTitle">'+t("feedbackTitle")+'</h2><p>'+t("feedbackIntro")+'</p><p class="meta">'+escapeHTML(S.feedbackOrder.order_id)+" · "+escapeHTML(S.feedbackOrder.status)+'</p>';
+    html+='<form id="feedbackForm"><div class="feedback-rating" role="group" aria-label="Rating">';
+    [1,2,3,4,5].forEach(function(star){html+='<button type="button" data-act="feedback-star" data-v="'+star+'" aria-label="'+star+' '+t("feedbackStar")+(star===1?'':'s')+'" aria-pressed="'+(S.feedbackRating===star)+'">'+star+' ★</button>';});
+    html+='</div><label for="feedbackComment">'+t("feedbackComment")+'</label><textarea id="feedbackComment" maxlength="2000">'+escapeHTML(S.feedbackComment)+'</textarea>';
+    if(S.feedbackError) html+='<p role="alert">'+escapeHTML(S.feedbackError)+'</p>';
+    html+='<div class="feedback-prompt-actions"><button type="button" data-act="feedback-skip">'+t("feedbackSkip")+'</button><button type="submit" '+(S.feedbackSubmitting?'disabled':'')+'>'+t("feedbackSubmit")+'</button></div></form></section></div>';
+  }
+  root.innerHTML=html;
+}
+async function openVendorFeedback(vendorId){
+  S.feedbackVendor=vendorId;S.feedbackData=null;S.feedbackError="";S.feedbackPage=1;renderFeedbackOverlays();await fetchVendorFeedback(1,false);
+}
+async function fetchVendorFeedback(page,append){
+  if(!S.feedbackVendor)return;
+  S.feedbackLoading=true;S.feedbackError="";renderFeedbackOverlays();
+  try{var result=await api("/operators/"+encodeURIComponent(S.feedbackVendor)+"/feedback?page="+page+"&limit=10");if(append&&S.feedbackData)result.reviews=S.feedbackData.reviews.concat(result.reviews);S.feedbackData=result;S.feedbackPage=page;S.feedbackTotalPages=result.pagination.total_pages;}
+  catch(error){S.feedbackError=error.message||t("feedbackError");}
+  S.feedbackLoading=false;renderFeedbackOverlays();
+}
+async function submitFeedback(){
+  if(!S.feedbackOrder||S.feedbackSubmitting)return;
+  var comment=document.getElementById("feedbackComment");S.feedbackComment=comment?comment.value:"";
+  if(S.feedbackRating==null&&!S.feedbackComment.trim()){S.feedbackError=t("feedbackRequired");renderFeedbackOverlays();return;}
+  S.feedbackSubmitting=true;S.feedbackError="";renderFeedbackOverlays();
+  try{await api("/orders/"+encodeURIComponent(S.feedbackOrder.order_id)+"/feedback",{method:"POST",body:JSON.stringify({rating:S.feedbackRating,comment:S.feedbackComment.trim()||null})});try{localStorage.setItem(feedbackKey(S.feedbackOrder.order_id),"1");}catch(e){}S.feedbackSavedOrderId=S.feedbackOrder.order_id;S.feedbackOrder=null;S.feedbackSubmitting=false;S.feedbackError="";S.feedbackSuccess=true;render();showNextFeedbackPrompt();window.setTimeout(function(){S.feedbackSuccess=false;renderFeedbackOverlays();},4000);}
+  catch(error){S.feedbackSubmitting=false;S.feedbackError=error.message||t("feedbackSubmitError");renderFeedbackOverlays();}
 }
 
 var paymentQrObjectUrl = null;
@@ -232,10 +313,12 @@ function render(){
     h += '<div class="card"><h2>'+t("offH")+'</h2>';
     if(S.err) h += '<div class="msg err">'+S.err+'</div>';
     S.offers.forEach(function(o){
+      h += '<div class="offer" role="group" aria-label="'+o.name+'">';
       h += '<button class="offer" data-act="pick" data-v="'+o.operator_id+'" aria-pressed="'+(S.sel===o.operator_id)+'">';
       h += '<span class="nm">'+o.name+(o.type==="public"?'<span class="tag pub">'+t("pub")+'</span>':'')+'</span><span class="pr">Rs '+num(o.price)+'</span>';
       h += '<span class="meta">'+o.eta_min+' '+t("min")+', '+o.distance_km+' '+t("km")+', '+o.rating.toFixed(1)+' / 5'+(o.flagged?'<span class="tag bad">'+t("above")+num(o.price - (S.offers.filter(function(x){return x.type==="public";})[0]||{price:0}).price)+'</span>':'')+'</span>';
       h += '<span class="meta" style="text-align:right">Rs '+num(o.price_per_1000l)+' '+t("per")+'</span></button>';
+      h += '<div class="offer-actions"><button type="button" data-act="view-feedback" data-v="'+o.operator_id+'">'+t("viewFeedback")+'</button></div></div>';
     });
     h += '<p class="meta">'+t("payNote")+'</p>';
     h += '<button class="btn" data-act="confirm" '+(S.sel?'':'disabled')+'>'+(S.sel?t("confirm"):t("pickOne"))+'</button></div>';
@@ -253,7 +336,7 @@ function render(){
   else if(S.step === 3){
     var st = S.status || "CONFIRMED";
     if(st === "CANCELLED"){
-      h += '<div class="card"><h2>'+t("cancelledTitle")+'</h2><p class="meta">'+t("cancelledMessage")+'</p><button class="btn" data-act="reset">'+t("again")+'</button></div>';
+      h += '<div class="card"><h2>'+t("cancelledTitle")+'</h2><p class="meta">'+t("cancelledMessage")+'</p>'+(S.feedbackSavedOrderId===S.orderId?'<p role="status">'+t("feedbackSaved")+'</p>':'')+'<button class="btn" data-act="reset">'+t("again")+'</button></div>';
     } else {
       h += '<div class="card"><h2>'+(st==="ARRIVED"?t("arrivedH"):t("trkH"))+'</h2>';
       h += '<div class="bar"><i style="width:'+(st==="ARRIVED"?100:st==="DISPATCHED"?55:15)+'%"></i></div>';
@@ -265,7 +348,7 @@ function render(){
   }
   else if(S.step === 4){
     if(S.status === "DISPUTED"){
-      h += '<div class="card"><h2>'+t("dispH")+'</h2><p class="meta">'+t("dispTxt")+'</p><button class="btn" data-act="reset">'+t("again")+'</button></div>';
+      h += '<div class="card"><h2>'+t("dispH")+'</h2><p class="meta">'+t("dispTxt")+'</p>'+(S.feedbackSavedOrderId===S.orderId?'<p role="status">'+t("feedbackSaved")+'</p>':'')+'<button class="btn" data-act="reset">'+t("again")+'</button></div>';
     } else {
       h += '<div class="card"><h2>'+t("delH")+'</h2><p class="meta">'+t("delSub")+'</p><div class="otp">'+(S.otp||"----")+'</div>';
       if(!S.otp){ h += '<p class="meta">'+t("recoverNote")+'</p><button class="btn" data-act="recover-code" '+(S.codeLoading?'disabled':'')+'>'+(S.codeLoading?t("codeLoading"):t("recoverCode"))+'</button>'; }
@@ -280,6 +363,7 @@ function render(){
     h += '<tr><th>'+t("order")+'</th><td>'+S.orderId+'</td></tr>';
     h += '<tr><th>'+o2.name+'</th><td>Rs '+num(o2.price)+'</td></tr>';
     h += '<tr><th>'+t("status")+'</th><td><span class="tag ok">DELIVERED</span></td></tr></table>';
+    if(S.feedbackSavedOrderId===S.orderId) h += '<p role="status">'+t("feedbackSaved")+'</p>';
     h += '<div style="height:12px"></div><button class="btn" data-act="reset">'+t("again")+'</button></div>';
   }
   else if(S.step === 6){
@@ -298,6 +382,7 @@ function render(){
     h += '<button class="btn" data-act="confirm-resumed">'+t("resumeConfirm")+'</button></div>';
   }
   v.innerHTML = h;
+  renderFeedbackOverlays();
   if(S.step !== 2 && paymentQrObjectUrl){ URL.revokeObjectURL(paymentQrObjectUrl); paymentQrObjectUrl = null; }
   if(S.step === 2){
     var qrImage = document.getElementById("paymentQr");
@@ -409,14 +494,14 @@ function startPoll(){
     try{
       var st = await api("/status/" + S.orderId);
       S.status = st.status;
-      if(S.status === "CANCELLED"){ stopPoll(); S.step = 3; render(); return; }
+      if(S.status === "CANCELLED"){ stopPoll(); S.step = 3; render(); queueFeedbackPrompt({order_id:S.orderId,status:S.status}); return; }
       if(S.status === "ARRIVED" && S.step === 3){
         S.step = 4; render();
       } else if((S.status === "DISPATCHED" || S.status === "CONFIRMED") && S.step === 3){
         render();
       }
-      if(S.status === "DISPUTED"){ stopPoll(); S.step = 4; render(); }
-      if(S.status === "DELIVERED"){ stopPoll(); S.step = 5; render(); }
+      if(S.status === "DISPUTED"){ stopPoll(); S.step = 4; render(); queueFeedbackPrompt({order_id:S.orderId,status:S.status}); }
+      if(S.status === "DELIVERED"){ stopPoll(); S.step = 5; render(); queueFeedbackPrompt({order_id:S.orderId,status:S.status}); }
     }catch(e){ /* transient network hiccup — keep polling */ }
   }, 2000);
 }
@@ -531,13 +616,26 @@ document.addEventListener("click", async function(e){
     b.disabled = true;
     try{
       var result = await api("/orders/"+encodeURIComponent(S.orderId)+"/cancel", {method:"POST"});
-      stopPoll(); S.status = result.status; S.step = 3; S.err = ""; render();
+      stopPoll(); S.status = result.status; S.step = 3; S.err = ""; render(); queueFeedbackPrompt({order_id:S.orderId,status:result.status});
     }catch(err){ S.err = err.message; render(); }
   }
   else if(a === "reset"){ reset(); }
+  else if(a === "view-feedback"){ await openVendorFeedback(v); }
+  else if(a === "close-feedback" || a === "feedback-backdrop"){ if(a==="close-feedback" || e.target===b) { S.feedbackVendor=null; S.feedbackData=null; S.feedbackError=""; renderFeedbackOverlays(); } }
+  else if(a === "feedback-more"){ if(S.feedbackPage<S.feedbackTotalPages || (S.feedbackData&&S.feedbackPage<S.feedbackData.pagination.total_pages)) await fetchVendorFeedback(S.feedbackPage+1,true); }
+  else if(a === "feedback-star"){ S.feedbackRating=Number(v); S.feedbackError=""; renderFeedbackOverlays(); }
+  else if(a === "feedback-skip"){ dismissFeedbackPrompt(); }
 });
 
+document.addEventListener("input",function(e){if(e.target && e.target.id==="feedbackComment") S.feedbackComment=e.target.value;});
+document.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(S.feedbackOrder)dismissFeedbackPrompt();else if(S.feedbackVendor){S.feedbackVendor=null;S.feedbackData=null;S.feedbackError="";renderFeedbackOverlays();}});
+
 document.addEventListener("submit", async function(e){
+  if(e.target.id === "feedbackForm"){
+    e.preventDefault();
+    await submitFeedback();
+    return;
+  }
   if(e.target.id !== "locationForm") return;
   e.preventDefault();
   var input = document.getElementById("locationSearch"), button = e.target.querySelector("button[type=submit]");

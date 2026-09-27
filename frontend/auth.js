@@ -291,6 +291,16 @@
           return `${event.from_status || "START"} → ${event.to_status} (${new Date(event.at).toLocaleString()})`;
         }).join(" · ");
         item.append(summary, detail, events);
+        if (role === "citizen" && ["DELIVERED", "DISPUTED", "CANCELLED"].includes(order.status)) {
+          const feedbackButton = document.createElement("button");
+          feedbackButton.type = "button";
+          feedbackButton.textContent = "Rate or edit feedback";
+          feedbackButton.addEventListener("click", function () {
+            dialog.close();
+            window.dispatchEvent(new CustomEvent("jalsethu:feedback-request", { detail: order }));
+          });
+          item.appendChild(feedbackButton);
+        }
         dialog.appendChild(item);
       });
       dialog.showModal();
