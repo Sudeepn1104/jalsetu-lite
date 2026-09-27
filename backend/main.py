@@ -25,6 +25,12 @@ from pydantic import BaseModel, ConfigDict, Field
 import qrcode
 import qrcode.image.svg
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+
+# Local `uvicorn` runs do not load the repository's .env file automatically.
+# Load it explicitly so staff provisioning uses the configured admin token.
+# Existing process environment variables (including container secrets) win.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
 
 app = FastAPI(title="JalSetu Lite API")
 cors_origins = [

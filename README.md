@@ -95,7 +95,7 @@ pip install -r requirements.txt
 
 ### 2. Start the backend API
 
-Keep the virtual environment activated and run the API from the `backend` directory:
+Keep the virtual environment activated and run the API from the `backend` directory. The backend loads the repository-root `.env` automatically for local development; values already set in the process environment take precedence.
 
 ```bash
 uvicorn main:app --reload --port 8000
